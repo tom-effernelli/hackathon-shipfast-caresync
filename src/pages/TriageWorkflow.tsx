@@ -48,7 +48,12 @@ interface Patient extends SupabasePatient {
 
 // Hook to calculate real-time treatment progress
 const useRealTimeProgress = (patient: Patient) => {
-  const [progress, setProgress] = useState<{percentage: number, timeElapsed: number}>({ percentage: 0, timeElapsed: 0 });
+  const [progress, setProgress] = useState<{
+    percentage: number;
+    timeElapsed: number;
+    actualElapsed: number;
+    isOverdue: boolean;
+  }>({ percentage: 0, timeElapsed: 0, actualElapsed: 0, isOverdue: false });
 
   useEffect(() => {
     if (patient.status !== 'in-treatment' || !patient.treatmentStartTime || !patient.estimated_treatment_duration) {
@@ -61,9 +66,18 @@ const useRealTimeProgress = (patient: Patient) => {
       const elapsedMs = currentTime - startTime;
       const elapsedMinutes = Math.floor(elapsedMs / (1000 * 60));
       const totalDuration = patient.estimated_treatment_duration!;
-      const percentage = Math.min(100, Math.round((elapsedMinutes / totalDuration) * 100));
       
-      setProgress({ percentage, timeElapsed: elapsedMinutes });
+      // Cap elapsed time at estimated duration for logical display
+      const cappedElapsedMinutes = Math.min(elapsedMinutes, totalDuration);
+      const percentage = Math.round((cappedElapsedMinutes / totalDuration) * 100);
+      const isOverdue = elapsedMinutes > totalDuration;
+      
+      setProgress({ 
+        percentage, 
+        timeElapsed: cappedElapsedMinutes,
+        actualElapsed: elapsedMinutes,
+        isOverdue 
+      });
     };
 
     // Update immediately
@@ -123,6 +137,17 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
     } else {
       const hours = Math.floor(diffMinutes / 60);
       return `${hours}h ${diffMinutes % 60}m ago`;
+    }
+  };
+
+  // Helper function to format treatment progress display
+  const formatTreatmentProgress = (progressData: any, estimatedDuration: number) => {
+    if (progressData.isOverdue) {
+      return `Treatment: Completed ✓ (${progressData.actualElapsed} min)`;
+    } else if (progressData.percentage >= 100) {
+      return `Treatment: Completed ✓`;
+    } else {
+      return `Treatment: ${progressData.timeElapsed}/${estimatedDuration} min (${progressData.percentage}%)`;
     }
   };
 
@@ -204,18 +229,22 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground font-medium">Treatment Progress</span>
-                  <span className="font-semibold text-success">
-                    {progressData.timeElapsed}/{patient.estimated_treatment_duration || 60} min ({progressData.percentage}%)
+                  <span className={`font-semibold ${progressData.isOverdue ? 'text-green-600' : 'text-success'}`}>
+                    {progressData.isOverdue ? 'Complete' : `${progressData.percentage}%`}
                   </span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-1000 ease-in-out"
-                    style={{ width: `${progressData.percentage}%` }}
+                    className={`h-full transition-all duration-1000 ease-in-out ${
+                      progressData.isOverdue 
+                        ? 'bg-gradient-to-r from-green-600 to-green-700' 
+                        : 'bg-gradient-to-r from-green-500 to-green-600'
+                    }`}
+                    style={{ width: `${Math.min(progressData.percentage, 100)}%` }}
                   />
                 </div>
-                <div className="text-xs text-success/80 font-medium">
-                  Treatment: {progressData.timeElapsed}/{patient.estimated_treatment_duration || 60} min ({progressData.percentage}%)
+                <div className={`text-xs font-medium ${progressData.isOverdue ? 'text-green-600' : 'text-success/80'}`}>
+                  {formatTreatmentProgress(progressData, patient.estimated_treatment_duration || 60)}
                 </div>
               </div>
             </div>
