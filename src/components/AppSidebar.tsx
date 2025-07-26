@@ -29,16 +29,7 @@ export function AppSidebar() {
   const workflowItems = [
     { title: "Triage Board", url: "/", icon: Activity },
     { title: "Patient Check-In", url: "/patient-checkin", icon: UserCheck },
-    { title: "Patient Management", url: "/patient-management", icon: Users },
-  ];
-
-  const analysisItems = [
     { title: "Triage Analysis", url: "/triage", icon: Heart },
-    { title: "Statistics", url: "/statistics", icon: BarChart3, adminOnly: true },
-  ];
-
-  const overviewItems = [
-    { title: "Dashboard", url: "/dashboard", icon: Home },
   ];
 
   const getRoleBadgeColor = (role: string) => {
@@ -50,9 +41,6 @@ export function AppSidebar() {
     }
   };
 
-  const visibleAnalysisItems = analysisItems.filter(item => 
-    !item.adminOnly || profile?.medical_role === 'admin'
-  );
 
   const renderMenuItems = (items: typeof workflowItems) => {
     return items.map((item) => {
@@ -98,28 +86,6 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {renderMenuItems(workflowItems)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
-            Analysis
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {renderMenuItems(visibleAnalysisItems)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
-            Overview
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {renderMenuItems(overviewItems)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

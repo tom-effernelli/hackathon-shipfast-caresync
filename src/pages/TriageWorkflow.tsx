@@ -31,7 +31,8 @@ import {
   UserCheck,
   Stethoscope,
   Timer,
-  Heart
+  Heart,
+  BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -441,6 +442,15 @@ const TriageWorkflow = () => {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Activity className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-bold">Triage Workflow Board</h1>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-4 gap-2"
+              onClick={() => toast.info('Statistics feature will be implemented soon')}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Stats
+            </Button>
           </div>
           <p className="text-muted-foreground">
             Real-time patient flow management for emergency department
