@@ -1,19 +1,6 @@
 import { useState, useEffect } from "react";
-import {
-  DndContext,
-  DragEndEvent,
-  DragOverlay,
-  DragStartEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCorners,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { fetchPatients, updatePatientStatus, type Patient as SupabasePatient } from "@/lib/supabase-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,21 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Search, 
-  Clock, 
-  User, 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  UserCheck,
-  Stethoscope,
-  Timer,
-  Heart,
-  BarChart3
-} from "lucide-react";
+import { Search, Clock, User, Activity, AlertTriangle, CheckCircle, UserCheck, Stethoscope, Timer, Heart, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
-
 interface Patient extends SupabasePatient {
   status?: 'checked-in' | 'assessed' | 'in-treatment';
   chiefComplaint?: string;
@@ -54,85 +28,90 @@ const useRealTimeProgress = (patient: Patient) => {
     timeElapsed: number;
     actualElapsed: number;
     isOverdue: boolean;
-  }>({ percentage: 0, timeElapsed: 0, actualElapsed: 0, isOverdue: false });
-
+  }>({
+    percentage: 0,
+    timeElapsed: 0,
+    actualElapsed: 0,
+    isOverdue: false
+  });
   useEffect(() => {
     if (patient.status !== 'in-treatment' || !patient.treatmentStartTime || !patient.estimated_treatment_duration) {
       return;
     }
-
     const updateProgress = () => {
       const startTime = new Date(patient.treatmentStartTime!).getTime();
       const currentTime = Date.now();
       const elapsedMs = currentTime - startTime;
       const elapsedMinutes = Math.floor(elapsedMs / (1000 * 60));
       const totalDuration = patient.estimated_treatment_duration!;
-      
+
       // Cap elapsed time at estimated duration for logical display
       const cappedElapsedMinutes = Math.min(elapsedMinutes, totalDuration);
-      const percentage = Math.round((cappedElapsedMinutes / totalDuration) * 100);
+      const percentage = Math.round(cappedElapsedMinutes / totalDuration * 100);
       const isOverdue = elapsedMinutes > totalDuration;
-      
-      setProgress({ 
-        percentage, 
+      setProgress({
+        percentage,
         timeElapsed: cappedElapsedMinutes,
         actualElapsed: elapsedMinutes,
-        isOverdue 
+        isOverdue
       });
     };
 
     // Update immediately
     updateProgress();
-    
+
     // Update every 30 seconds for real-time progress
     const interval = setInterval(updateProgress, 30000);
-    
     return () => clearInterval(interval);
   }, [patient.status, patient.treatmentStartTime, patient.estimated_treatment_duration]);
-
   return progress;
 };
-
-
-const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: boolean }) => {
+const PatientCard = ({
+  patient,
+  isDragging
+}: {
+  patient: Patient;
+  isDragging?: boolean;
+}) => {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
-    transition,
-  } = useSortable({ id: patient.id });
-
+    transition
+  } = useSortable({
+    id: patient.id
+  });
   const progressData = useRealTimeProgress(patient);
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : 1
   };
-
   const getUrgencyColor = (level: string) => {
     switch (level) {
-      case 'critical': return 'destructive';
-      case 'high': return 'destructive';
-      case 'moderate': return 'outline';
-      case 'low': return 'secondary';
-      default: return 'secondary';
+      case 'critical':
+        return 'destructive';
+      case 'high':
+        return 'destructive';
+      case 'moderate':
+        return 'outline';
+      case 'low':
+        return 'secondary';
+      default:
+        return 'secondary';
     }
   };
-
   const formatTime = (timestamp: string) => {
     return new Date(timestamp).toLocaleTimeString('en-US', {
       hour: '2-digit',
-      minute: '2-digit',
+      minute: '2-digit'
     });
   };
-
   const getTimeSince = (timestamp: string) => {
     const now = new Date();
     const time = new Date(timestamp);
     const diffMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60));
-    
     if (diffMinutes < 60) {
       return `${diffMinutes}m ago`;
     } else {
@@ -151,17 +130,7 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
       return `Treatment: ${progressData.timeElapsed}/${estimatedDuration} min (${progressData.percentage}%)`;
     }
   };
-
-  return (
-    <Card
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${
-        isDragging ? 'ring-2 ring-primary' : ''
-      }`}
-    >
+  return <Card ref={setNodeRef} style={style} {...attributes} {...listeners} className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${isDragging ? 'ring-2 ring-primary' : ''}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -178,8 +147,7 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
           {patient.chiefComplaint || patient.medical_history || 'Medical consultation'}
         </p>
 
-        {patient.status === 'checked-in' && (
-          <>
+        {patient.status === 'checked-in' && <>
             <Badge variant="outline" className="text-xs">
               <UserCheck className="w-3 h-3 mr-1" />
               Awaiting Clinical Assessment
@@ -188,11 +156,9 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
               <Clock className="w-3 h-3" />
               Check-in: {formatTime(patient.checkInTime)} ({getTimeSince(patient.checkInTime)})
             </div>
-          </>
-        )}
+          </>}
 
-        {patient.status === 'assessed' && (
-          <>
+        {patient.status === 'assessed' && <>
             <div className="space-y-2">
               <Badge variant={getUrgencyColor(patient.urgency_level || 'low')} className="text-xs">
                 <AlertTriangle className="w-3 h-3 mr-1" />
@@ -201,18 +167,14 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
               <div className="text-sm font-medium text-primary">
                 Wait Time: {patient.estimated_wait_time ? `${patient.estimated_wait_time} min` : 'TBD'}
               </div>
-              {patient.assignedDoctor && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {patient.assignedDoctor && <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Stethoscope className="w-3 h-3" />
                   {patient.assignedDoctor}
-                </div>
-              )}
+                </div>}
             </div>
-          </>
-        )}
+          </>}
 
-        {patient.status === 'in-treatment' && (
-          <>
+        {patient.status === 'in-treatment' && <>
             <Badge variant="secondary" className="text-xs bg-success/10 text-success border-success/20">
               <Activity className="w-3 h-3 mr-1" />
               In Treatment
@@ -235,42 +197,33 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
                   </span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-1000 ease-in-out ${
-                      progressData.isOverdue 
-                        ? 'bg-gradient-to-r from-green-600 to-green-700' 
-                        : 'bg-gradient-to-r from-green-500 to-green-600'
-                    }`}
-                    style={{ width: `${Math.min(progressData.percentage, 100)}%` }}
-                  />
+                  <div className={`h-full transition-all duration-1000 ease-in-out ${progressData.isOverdue ? 'bg-gradient-to-r from-green-600 to-green-700' : 'bg-gradient-to-r from-green-500 to-green-600'}`} style={{
+                width: `${Math.min(progressData.percentage, 100)}%`
+              }} />
                 </div>
                 <div className={`text-xs font-medium ${progressData.isOverdue ? 'text-green-600' : 'text-success/80'}`}>
                   {formatTreatmentProgress(progressData, patient.estimated_treatment_duration || 60)}
                 </div>
               </div>
             </div>
-          </>
-        )}
+          </>}
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
-
-const Column = ({ 
-  title, 
-  patients, 
-  status, 
-  icon: Icon, 
-  themeColor 
-}: { 
-  title: string; 
-  patients: Patient[]; 
+const Column = ({
+  title,
+  patients,
+  status,
+  icon: Icon,
+  themeColor
+}: {
+  title: string;
+  patients: Patient[];
   status: string;
   icon: any;
   themeColor: string;
 }) => {
-  return (
-    <div className="flex-1 min-w-0">
+  return <div className="flex-1 min-w-0">
       <Card className={`h-full border-${themeColor}/20`}>
         <CardHeader className={`bg-${themeColor}/5 border-b border-${themeColor}/10`}>
           <CardTitle className={`flex items-center gap-2 text-${themeColor}`}>
@@ -284,57 +237,46 @@ const Column = ({
         <CardContent className="p-4 h-[calc(100vh-200px)] overflow-y-auto">
           <SortableContext items={patients.map(p => p.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-3">
-              {patients.map((patient) => (
-                <PatientCard key={patient.id} patient={patient} />
-              ))}
-              {patients.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
+              {patients.map(patient => <PatientCard key={patient.id} patient={patient} />)}
+              {patients.length === 0 && <div className="text-center py-8 text-muted-foreground">
                   <Icon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No patients in this stage</p>
-                </div>
-              )}
+                </div>}
             </div>
           </SortableContext>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 const TriageWorkflow = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
-
   useEffect(() => {
     loadPatients();
   }, []);
-
   const loadPatients = async () => {
     try {
       const supabasePatients = await fetchPatients();
-      
+
       // Transform Supabase patients to workflow format
       const workflowPatients: Patient[] = supabasePatients.map(p => {
         let treatmentStartTime: string | undefined = undefined;
-        
+
         // Fix timestamp calculation by generating realistic treatment start times
         if (p.workflow_status === 'in_treatment' && p.estimated_treatment_duration) {
           const now = new Date();
           const duration = p.estimated_treatment_duration;
           // Generate realistic start times (10-80% complete, never 100%)
           const progressPercent = Math.random() * 70 + 10; // 10-80%
-          const elapsedMinutes = Math.floor((duration * progressPercent) / 100);
-          const startTime = new Date(now.getTime() - (elapsedMinutes * 60 * 1000));
+          const elapsedMinutes = Math.floor(duration * progressPercent / 100);
+          const startTime = new Date(now.getTime() - elapsedMinutes * 60 * 1000);
           treatmentStartTime = startTime.toISOString();
-          
           console.log(`Patient ${p.name}: ${elapsedMinutes}/${duration} min (${Math.round(progressPercent)}%)`);
         }
-        
         return {
           ...p,
-          status: p.workflow_status === 'self_checkin' ? 'checked-in' : 
-                 p.workflow_status === 'clinical_assessment' ? 'assessed' : 'in-treatment',
+          status: p.workflow_status === 'self_checkin' ? 'checked-in' : p.workflow_status === 'clinical_assessment' ? 'assessed' : 'in-treatment',
           chiefComplaint: p.medical_history || 'Medical consultation',
           checkInTime: p.created_at,
           treatmentStartTime,
@@ -344,56 +286,48 @@ const TriageWorkflow = () => {
           triageCategory: p.urgency_level ? `${p.urgency_level.charAt(0).toUpperCase() + p.urgency_level.slice(1)} Priority` : 'Standard'
         };
       });
-      
       setPatients(workflowPatients);
     } catch (error) {
       console.error('Error loading patients:', error);
       toast.error('Failed to load patient data');
     }
   };
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
-
-  const filteredPatients = patients.filter(patient =>
-    patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (patient.chiefComplaint || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+  const sensors = useSensors(useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 8
+    }
+  }));
+  const filteredPatients = patients.filter(patient => patient.name.toLowerCase().includes(searchQuery.toLowerCase()) || (patient.chiefComplaint || '').toLowerCase().includes(searchQuery.toLowerCase()));
   const checkedInPatients = filteredPatients.filter(p => p.status === 'checked-in');
-  
-  // Sort assessed patients by urgency priority (Critical → High → Moderate → Low)
-  const urgencyOrder = { 'critical': 0, 'high': 1, 'moderate': 2, 'low': 3 };
-  const assessedPatients = filteredPatients
-    .filter(p => p.status === 'assessed')
-    .sort((a, b) => {
-      const aUrgency = urgencyOrder[a.urgency_level as keyof typeof urgencyOrder] ?? 4;
-      const bUrgency = urgencyOrder[b.urgency_level as keyof typeof urgencyOrder] ?? 4;
-      if (aUrgency !== bUrgency) return aUrgency - bUrgency;
-      
-      // Within same urgency, sort by check-in time (longest waiting first)
-      return new Date(a.checkInTime || 0).getTime() - new Date(b.checkInTime || 0).getTime();
-    });
-  
-  const inTreatmentPatients = filteredPatients.filter(p => p.status === 'in-treatment');
 
+  // Sort assessed patients by urgency priority (Critical → High → Moderate → Low)
+  const urgencyOrder = {
+    'critical': 0,
+    'high': 1,
+    'moderate': 2,
+    'low': 3
+  };
+  const assessedPatients = filteredPatients.filter(p => p.status === 'assessed').sort((a, b) => {
+    const aUrgency = urgencyOrder[a.urgency_level as keyof typeof urgencyOrder] ?? 4;
+    const bUrgency = urgencyOrder[b.urgency_level as keyof typeof urgencyOrder] ?? 4;
+    if (aUrgency !== bUrgency) return aUrgency - bUrgency;
+
+    // Within same urgency, sort by check-in time (longest waiting first)
+    return new Date(a.checkInTime || 0).getTime() - new Date(b.checkInTime || 0).getTime();
+  });
+  const inTreatmentPatients = filteredPatients.filter(p => p.status === 'in-treatment');
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
-
   const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    
+    const {
+      active,
+      over
+    } = event;
     if (!over) {
       setActiveId(null);
       return;
     }
-
     const activeId = active.id as string;
     const overId = over.id as string;
 
@@ -403,7 +337,7 @@ const TriageWorkflow = () => {
 
     // Determine the new status based on which column was dropped into
     let newStatus: Patient['status'] = activePatient.status;
-    
+
     // Check if dropped on a patient card (get that patient's status)
     const overPatient = patients.find(p => p.id === overId);
     if (overPatient) {
@@ -414,43 +348,29 @@ const TriageWorkflow = () => {
     if (newStatus !== activePatient.status) {
       try {
         // Map workflow status back to Supabase status
-        const supabaseStatus = newStatus === 'checked-in' ? 'self_checkin' :
-                              newStatus === 'assessed' ? 'clinical_assessment' : 'in_treatment';
-        
+        const supabaseStatus = newStatus === 'checked-in' ? 'self_checkin' : newStatus === 'assessed' ? 'clinical_assessment' : 'in_treatment';
+
         // Update in Supabase
         await updatePatientStatus(activeId, supabaseStatus);
-        
+
         // Reload patients to reflect changes
         await loadPatients();
-        
         toast.success(`${activePatient.name} moved to ${newStatus.replace('-', ' ')} stage`);
       } catch (error) {
         console.error('Error updating patient status:', error);
         toast.error('Failed to update patient status');
       }
     }
-
     setActiveId(null);
   };
-
   const activePatient = activeId ? patients.find(p => p.id === activeId) : null;
-
-  return (
-    <div className="min-h-screen bg-background p-4">
+  return <div className="min-h-screen bg-background p-4">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Activity className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-bold">Triage Workflow Board</h1>
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-4 gap-2"
-              onClick={() => toast.info('Statistics feature will be implemented soon')}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Stats
-            </Button>
+            
           </div>
           <p className="text-muted-foreground">
             Real-time patient flow management for emergency department
@@ -461,12 +381,7 @@ const TriageWorkflow = () => {
         <div className="mb-6 space-y-4">
           <div className="relative max-w-md mx-auto">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search patients..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Search patients..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -498,45 +413,18 @@ const TriageWorkflow = () => {
         </div>
 
         {/* Kanban Board */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Column
-              title="Self Check-In Complete"
-              patients={checkedInPatients}
-              status="checked-in"
-              icon={UserCheck}
-              themeColor="blue"
-            />
-            <Column
-              title="Clinical Assessment Complete"
-              patients={assessedPatients}
-              status="assessed"
-              icon={Heart}
-              themeColor="orange"
-            />
-            <Column
-              title="In Treatment"
-              patients={inTreatmentPatients}
-              status="in-treatment"
-              icon={Activity}
-              themeColor="green"
-            />
+            <Column title="Self Check-In Complete" patients={checkedInPatients} status="checked-in" icon={UserCheck} themeColor="blue" />
+            <Column title="Clinical Assessment Complete" patients={assessedPatients} status="assessed" icon={Heart} themeColor="orange" />
+            <Column title="In Treatment" patients={inTreatmentPatients} status="in-treatment" icon={Activity} themeColor="green" />
           </div>
 
           <DragOverlay>
-            {activePatient && (
-              <PatientCard patient={activePatient} isDragging />
-            )}
+            {activePatient && <PatientCard patient={activePatient} isDragging />}
           </DragOverlay>
         </DndContext>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default TriageWorkflow;
