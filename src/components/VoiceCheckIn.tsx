@@ -72,6 +72,7 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
   const [validationState, setValidationState] = useState<'none' | 'validating' | 'valid' | 'invalid'>('none');
   const [validationMessage, setValidationMessage] = useState("");
   const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState(0);
+  const [confidence, setConfidence] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -95,6 +96,10 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
   // Auto-ask question when moving to next - immediate start
   useEffect(() => {
     if (hasAudioPermission && currentQuestion && !isProcessing) {
+      // Pre-initialize speech recognition to eliminate startup delay
+      if (recognitionRef.current) {
+        recognitionRef.current.abort(); // Clear any ongoing recognition
+      }
       // Start immediately, no artificial delay
       speakQuestion(currentQuestion.text);
     }
@@ -125,10 +130,13 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
 
         recognitionRef.current.onresult = (event) => {
           let transcript = '';
+          let confidenceScore = 0;
           for (let i = 0; i < event.results.length; i++) {
             transcript += event.results[i][0].transcript;
+            confidenceScore = Math.max(confidenceScore, event.results[i][0].confidence || 0);
           }
           setCurrentTranscript(transcript);
+          setConfidence(confidenceScore * 100);
         };
 
         recognitionRef.current.onend = () => {
@@ -190,9 +198,27 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
     setAutoAdvanceTimer(timer);
   };
 
+  const playPositiveFeedback = () => {
+    const phrases = [
+      "Perfect, thank you!",
+      "Great, moving on!",
+      "Excellent!",
+      "Got it, next question!",
+      "Thank you!"
+    ];
+    const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+    const utterance = new SpeechSynthesisUtterance(randomPhrase);
+    utterance.rate = 1.1;
+    utterance.volume = 0.7;
+    speechSynthesis.speak(utterance);
+  };
+
   const handleConfirmAnswer = async () => {
     if (currentTranscript.trim()) {
       let finalAnswer = currentTranscript.trim();
+      
+      // Play positive feedback immediately
+      playPositiveFeedback();
       
       // Special handling for gender field with Claude API
       if (currentQuestion.field === 'gender') {
@@ -222,10 +248,11 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
       
       toast.success("Answer confirmed successfully!");
       
-      // Clear current transcript
+      // Clear current transcript and confidence
       setCurrentTranscript("");
+      setConfidence(0);
       
-      // Move to next question immediately
+      // Move to next question immediately - no delays
       if (currentQuestionIndex < questions.length - 1) {
         setCurrentQuestionIndex(prev => prev + 1);
       } else {
@@ -296,8 +323,8 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
       utterance.onstart = () => setIsPlaying(true);
       utterance.onend = () => {
         setIsPlaying(false);
-        // Auto-start recording immediately after question is spoken
-        startRecording();
+        // Auto-start recording immediately after question is spoken - no delay
+        setTimeout(() => startRecording(), 100); // Minimal delay for smooth transition
       };
       
       synthRef.current = utterance;
@@ -310,6 +337,7 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
     
     setIsRecording(true);
     setCurrentTranscript("");
+    setConfidence(0);
     
     try {
       recognitionRef.current.start();
@@ -362,16 +390,15 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
 
         toast.success("Answer recorded successfully!");
 
-        // Immediate advance for high confidence answers
-        setTimeout(() => {
-          if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex(prev => prev + 1);
-          } else {
-            completeCheckIn();
-          }
-          setValidationState('none');
-          setCurrentTranscript("");
-        }, 1000); // Reduced from 3 seconds to 1 second
+        // Immediate advance for high confidence answers - no delay
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+        } else {
+          completeCheckIn();
+        }
+        setValidationState('none');
+        setCurrentTranscript("");
+        setConfidence(0);
       } else if (isValid && confidence > 0.5) {
         // Medium confidence - show confirmation
         setValidationState('valid');
@@ -622,7 +649,25 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
 
                  {currentTranscript && validationState === 'none' && (
                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                     <p className="text-sm font-medium text-blue-900 mb-1">Your answer:</p>
+                     <div className="flex items-center justify-between mb-2">
+                       <p className="text-sm font-medium text-blue-900">Your answer:</p>
+                       {confidence > 0 && (
+                         <div className="flex items-center gap-2">
+                           <div className={`w-2 h-2 rounded-full ${
+                             confidence >= 80 ? 'bg-green-500' : 
+                             confidence >= 50 ? 'bg-orange-500' : 'bg-red-500'
+                           }`} />
+                           <span className={`text-xs font-medium ${
+                             confidence >= 80 ? 'text-green-700' : 
+                             confidence >= 50 ? 'text-orange-700' : 'text-red-700'
+                           }`}>
+                             {confidence >= 80 ? 'High confidence' : 
+                              confidence >= 50 ? 'Medium confidence' : 'Low confidence'}
+                           </span>
+                           <span className="text-xs text-gray-600">({Math.round(confidence)}%)</span>
+                         </div>
+                       )}
+                     </div>
                      <p className="text-blue-800">{currentTranscript}</p>
                    </div>
                  )}
