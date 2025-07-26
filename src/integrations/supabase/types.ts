@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string | null
+          table_name: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       doctors: {
         Row: {
           availability: boolean
@@ -95,15 +134,92 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          department: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          license_number: string | null
+          medical_role: Database["public"]["Enums"]["medical_role"]
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean
+          license_number?: string | null
+          medical_role?: Database["public"]["Enums"]["medical_role"]
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          license_number?: string | null
+          medical_role?: Database["public"]["Enums"]["medical_role"]
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          granted_at: string
+          granted_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["medical_role"]
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["medical_role"]
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["medical_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Enums"]["medical_role"]
+      }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["medical_role"]
+        }
+        Returns: boolean
+      }
+      is_admin: {
+        Args: { _user_id?: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      medical_role: "doctor" | "nurse" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -230,6 +346,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      medical_role: ["doctor", "nurse", "admin"],
+    },
   },
 } as const
