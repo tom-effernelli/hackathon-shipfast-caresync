@@ -92,12 +92,11 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
     };
   }, [isOpen]);
 
-  // Auto-ask question when moving to next
+  // Auto-ask question when moving to next - immediate start
   useEffect(() => {
     if (hasAudioPermission && currentQuestion && !isProcessing) {
-      setTimeout(() => {
-        speakQuestion(currentQuestion.text);
-      }, 1000);
+      // Start immediately, no artificial delay
+      speakQuestion(currentQuestion.text);
     }
   }, [currentQuestionIndex, hasAudioPermission]);
 
@@ -191,12 +190,34 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
     setAutoAdvanceTimer(timer);
   };
 
-  const handleConfirmAnswer = () => {
+  const handleConfirmAnswer = async () => {
     if (currentTranscript.trim()) {
-      // Save the current transcribed answer
+      let finalAnswer = currentTranscript.trim();
+      
+      // Special handling for gender field with Claude API
+      if (currentQuestion.field === 'gender') {
+        try {
+          setIsProcessing(true);
+          const { data, error } = await supabase.functions.invoke('classify-gender', {
+            body: { transcribedText: currentTranscript.trim() }
+          });
+          
+          if (!error && data?.classification) {
+            finalAnswer = data.classification;
+            toast.success(`Gender classified as: ${data.classification}`);
+          }
+        } catch (error) {
+          console.error('Error classifying gender:', error);
+          // Use original answer if classification fails
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+      
+      // Save the answer
       setAnswers(prev => ({
         ...prev,
-        [currentQuestion.field]: currentTranscript.trim()
+        [currentQuestion.field]: finalAnswer
       }));
       
       toast.success("Answer confirmed successfully!");
@@ -204,7 +225,7 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
       // Clear current transcript
       setCurrentTranscript("");
       
-      // Move to next question
+      // Move to next question immediately
       if (currentQuestionIndex < questions.length - 1) {
         setCurrentQuestionIndex(prev => prev + 1);
       } else {
@@ -275,10 +296,8 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
       utterance.onstart = () => setIsPlaying(true);
       utterance.onend = () => {
         setIsPlaying(false);
-        // Auto-start recording after question is spoken
-        setTimeout(() => {
-          startRecording();
-        }, 500);
+        // Auto-start recording immediately after question is spoken
+        startRecording();
       };
       
       synthRef.current = utterance;
@@ -343,25 +362,16 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
 
         toast.success("Answer recorded successfully!");
 
-        // Auto-advance countdown
-        setAutoAdvanceCountdown(3);
-        const countdownTimer = setInterval(() => {
-          setAutoAdvanceCountdown(prev => {
-            if (prev <= 1) {
-              clearInterval(countdownTimer);
-              // Move to next question
-              if (currentQuestionIndex < questions.length - 1) {
-                setCurrentQuestionIndex(prev => prev + 1);
-              } else {
-                completeCheckIn();
-              }
-              setValidationState('none');
-              setCurrentTranscript("");
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        // Immediate advance for high confidence answers
+        setTimeout(() => {
+          if (currentQuestionIndex < questions.length - 1) {
+            setCurrentQuestionIndex(prev => prev + 1);
+          } else {
+            completeCheckIn();
+          }
+          setValidationState('none');
+          setCurrentTranscript("");
+        }, 1000); // Reduced from 3 seconds to 1 second
       } else if (isValid && confidence > 0.5) {
         // Medium confidence - show confirmation
         setValidationState('valid');
@@ -373,10 +383,9 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
         setValidationState('invalid');
         setValidationMessage(suggestions || 'Could not understand the answer clearly');
         toast.error(`Please clarify: ${suggestions || 'Could not understand the answer'}`);
-        setTimeout(() => {
-          speakQuestion(`I didn't quite understand. ${suggestions || 'Could you please repeat your answer?'}`);
-          setValidationState('none');
-        }, 2000);
+        // Immediate retry, no delay
+        speakQuestion(`I didn't quite understand. ${suggestions || 'Could you please repeat your answer?'}`);
+        setTimeout(() => setValidationState('none'), 1000);
       }
       
     } catch (error) {
@@ -386,7 +395,7 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
       toast.error("Error processing your answer. Please try again.");
       setTimeout(() => {
         setValidationState('none');
-      }, 3000);
+      }, 1000); // Reduced delay
     } finally {
       setIsProcessing(false);
     }
@@ -422,14 +431,12 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
 
         toast.success("Answer recorded successfully!");
 
-        // Move to next question after a brief delay
-        setTimeout(() => {
-          if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex(prev => prev + 1);
-          } else {
-            completeCheckIn();
-          }
-        }, 1500);
+        // Move to next question immediately
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+        } else {
+          completeCheckIn();
+        }
       } else {
         toast.error(`Please clarify: ${suggestions || 'Could not understand the answer'}`);
         speakQuestion(`I didn't quite understand. ${suggestions || 'Could you please repeat your answer?'}`);
