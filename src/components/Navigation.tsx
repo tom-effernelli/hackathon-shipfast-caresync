@@ -1,12 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdminContext";
 import { Activity, Users, Home, UserCheck, Kanban, BarChart3, LogOut, Shield, Heart } from "lucide-react";
 
 export function Navigation() {
   const location = useLocation();
-  const { profile, signOut } = useAuth();
+  const { profile } = useAdmin();
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: Home },
@@ -79,11 +79,10 @@ export function Navigation() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={signOut}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 cursor-not-allowed opacity-50"
                 >
                   <LogOut className="w-4 h-4" />
-                  <span>Sign Out</span>
+                  <span>Admin Access</span>
                 </Button>
               </div>
             )}

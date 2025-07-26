@@ -1,6 +1,6 @@
 import { Heart, Activity, Users, UserCheck, BarChart3, Home, LogOut, Shield } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdminContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { profile, signOut } = useAuth();
+  const { profile } = useAdmin();
   const currentPath = location.pathname;
 
   const isActive = (path: string) => currentPath === path;
@@ -145,11 +145,10 @@ export function AppSidebar() {
             <Button
               variant="outline"
               size="sm"
-              onClick={signOut}
-              className="w-full flex items-center gap-2"
+              className="w-full flex items-center gap-2 cursor-not-allowed opacity-50"
             >
               <LogOut className="w-4 h-4" />
-              {!collapsed && <span>Sign Out</span>}
+              {!collapsed && <span>Admin Access</span>}
             </Button>
           </div>
         )}
