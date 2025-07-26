@@ -5,13 +5,14 @@ import * as z from "zod";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { ImageUpload } from "@/components/ImageUpload";
+import { VoiceCheckIn } from "@/components/VoiceCheckIn";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { QrCode, User, Heart, Phone, UserCheck, CheckCircle } from "lucide-react";
+import { QrCode, User, Heart, Phone, UserCheck, CheckCircle, Mic } from "lucide-react";
 import { toast } from "sonner";
 
 const patientSchema = z.object({
@@ -44,6 +45,7 @@ const PatientCheckIn = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkInResult, setCheckInResult] = useState<CheckInResult | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [showVoiceCheckIn, setShowVoiceCheckIn] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<PatientForm>({
     resolver: zodResolver(patientSchema),
@@ -144,6 +146,16 @@ const PatientCheckIn = () => {
     setImageBase64(imageBase64String);
   };
 
+  const handleVoiceCheckInComplete = (voiceData: PatientForm) => {
+    // Pre-fill the form with voice data
+    Object.entries(voiceData).forEach(([key, value]) => {
+      setValue(key as keyof PatientForm, value);
+    });
+    
+    setShowVoiceCheckIn(false);
+    toast.success("Voice check-in completed! Please review and submit the form.");
+  };
+
   if (checkInResult) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -221,11 +233,38 @@ const PatientCheckIn = () => {
             <UserCheck className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-bold">Patient Self Check-In</h1>
           </div>
-          <p className="text-muted-foreground">
-            Please fill out the form below to complete your check-in process
+          <p className="text-muted-foreground mb-6">
+            Choose your preferred check-in method
           </p>
+          
+          {/* Check-in Method Selection */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+            <Button
+              onClick={() => setShowVoiceCheckIn(true)}
+              size="lg"
+              variant="outline"
+              className="min-w-[200px] h-16 text-lg"
+            >
+              <Mic className="w-6 h-6 mr-3" />
+              Voice Check-In
+            </Button>
+            <div className="text-sm text-muted-foreground self-center">or</div>
+            <Button
+              onClick={() => document.getElementById('manual-form')?.scrollIntoView({ behavior: 'smooth' })}
+              size="lg"
+              variant="default"
+              className="min-w-[200px] h-16 text-lg"
+            >
+              <User className="w-6 h-6 mr-3" />
+              Manual Form
+            </Button>
+          </div>
         </div>
 
+        <div id="manual-form">
+          <h2 className="text-2xl font-semibold text-center mb-6">Manual Check-In Form</h2>
+        </div>
+        
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           {/* Basic Information */}
           <Card>
@@ -451,6 +490,13 @@ const PatientCheckIn = () => {
             </Button>
           </div>
         </form>
+
+        {/* Voice Check-In Modal */}
+        <VoiceCheckIn
+          isOpen={showVoiceCheckIn}
+          onClose={() => setShowVoiceCheckIn(false)}
+          onComplete={handleVoiceCheckInComplete}
+        />
       </div>
     </div>
   );
