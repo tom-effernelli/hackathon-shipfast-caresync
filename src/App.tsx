@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import PatientCheckIn from "./pages/PatientCheckIn";
 import Triage from "./pages/Triage";
+import TriageWorkflow from "./pages/TriageWorkflow";
 import { Navigation } from "@/components/Navigation";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/patient-checkin" element={<PatientCheckIn />} />
           <Route path="/triage" element={<Triage />} />
+          <Route path="/triage-workflow" element={<TriageWorkflow />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Activity, Users, Home, UserCheck } from "lucide-react";
+import { Activity, Users, Home, UserCheck, Kanban } from "lucide-react";
 
 export function Navigation() {
   const location = useLocation();
@@ -9,6 +9,7 @@ export function Navigation() {
     { path: "/", label: "Home", icon: Home },
     { path: "/patient-checkin", label: "Patient Check-In", icon: UserCheck },
     { path: "/triage", label: "Triage Analysis", icon: Activity },
+    { path: "/triage-workflow", label: "Triage Board", icon: Kanban },
     { path: "/patient-management", label: "Patient Management", icon: Users },
   ];
 
