@@ -296,6 +296,7 @@ const TriageWorkflow = () => {
   }, []);
   const loadPatients = async () => {
     try {
+      console.log('Loading patients with cache invalidation...')
       const supabasePatients = await fetchPatients();
 
       // Transform Supabase patients to workflow format
@@ -397,20 +398,22 @@ const TriageWorkflow = () => {
         // Map workflow status back to Supabase status
         const supabaseStatus = newStatus === 'checked-in' ? 'self_checkin' : newStatus === 'assessed' ? 'clinical_assessment' : 'in_treatment';
 
-        console.log(`Updating patient ${activeId} to status: ${supabaseStatus}`);
+        console.log(`Updating patient ${activeId} from ${activePatient.status} to status: ${supabaseStatus}`);
 
         // Update in Supabase
         await updatePatientStatus(activeId, supabaseStatus);
 
+        console.log('Patient status updated successfully, reloading data...');
+        
         // Reload patients to reflect changes
         await loadPatients();
         toast.success(`${activePatient.name} moved to ${newStatus.replace('-', ' ')} stage`);
       } catch (error) {
         console.error('Error updating patient status:', error);
-        toast.error('Failed to update patient status');
+        toast.error(`Failed to update patient status: ${error.message}`);
       }
     } else {
-      console.log('No status change needed');
+      console.log('No status change needed - patient already in target status');
     }
     setActiveId(null);
   };

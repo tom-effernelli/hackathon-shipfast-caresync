@@ -110,6 +110,46 @@ export async function addPatient(patient: Omit<Patient, 'id' | 'created_at' | 'u
 
 // Update patient workflow status
 export async function updatePatientStatus(patientId: string, status: Patient['workflow_status'], updates?: Partial<Patient>): Promise<Patient> {
+  // First, fetch current patient to check if status is already the same
+  const { data: currentPatient, error: fetchError } = await supabase
+    .from('patients')
+    .select('workflow_status')
+    .eq('id', patientId)
+    .maybeSingle()
+
+  if (fetchError) {
+    console.error('Error fetching current patient status:', fetchError)
+    throw fetchError
+  }
+
+  if (!currentPatient) {
+    throw new Error(`Patient with ID ${patientId} not found`)
+  }
+
+  // If status is already the same, return current data without updating
+  if (currentPatient.workflow_status === status) {
+    console.log(`Patient ${patientId} already has status ${status}, no update needed`)
+    
+    // Fetch full patient data to return
+    const { data: fullPatient, error: fullError } = await supabase
+      .from('patients')
+      .select('*')
+      .eq('id', patientId)
+      .single()
+
+    if (fullError) {
+      console.error('Error fetching full patient data:', fullError)
+      throw fullError
+    }
+
+    return {
+      ...fullPatient,
+      workflow_status: fullPatient.workflow_status as Patient['workflow_status'],
+      urgency_level: fullPatient.urgency_level as Patient['urgency_level']
+    }
+  }
+
+  // Proceed with update since status is different
   const { data, error } = await supabase
     .from('patients')
     .update({
@@ -119,15 +159,11 @@ export async function updatePatientStatus(patientId: string, status: Patient['wo
     })
     .eq('id', patientId)
     .select()
-    .maybeSingle()
+    .single()
 
   if (error) {
     console.error('Error updating patient status:', error)
     throw error
-  }
-
-  if (!data) {
-    throw new Error(`Patient with ID ${patientId} not found or cannot be updated`)
   }
 
   return {
