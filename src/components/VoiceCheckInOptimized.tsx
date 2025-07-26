@@ -402,7 +402,7 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
   };
 
   const skipQuestion = () => {
-    if (!currentQuestion.required) {
+    if (!currentQuestion?.required) {
       setAnswers(prev => ({ ...prev, [currentQuestion.field]: "" }));
       advanceToNext();
     }
@@ -608,7 +608,7 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
                           )}
                         </Button>
                         
-                        {!currentQuestion.required && (
+                        {!currentQuestion?.required && (
                           <Button
                             onClick={skipQuestion}
                             variant="outline"
