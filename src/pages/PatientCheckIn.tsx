@@ -5,7 +5,7 @@ import * as z from "zod";
 import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { ImageUpload } from "@/components/ImageUpload";
-import { VoiceCheckIn } from "@/components/VoiceCheckIn";
+import { VoiceCheckInOptimized } from "@/components/VoiceCheckInOptimized";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -531,7 +531,7 @@ const PatientCheckIn = () => {
         </form>
 
         {/* Voice Check-In Modal */}
-        <VoiceCheckIn
+        <VoiceCheckInOptimized
           isOpen={showVoiceCheckIn}
           onClose={() => setShowVoiceCheckIn(false)}
           onComplete={handleVoiceCheckInComplete}
