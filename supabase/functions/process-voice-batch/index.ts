@@ -36,7 +36,21 @@ serve(async (req) => {
 
   try {
     const requestData: ProcessBatchRequest = await req.json();
+    
+    // Validate input data
+    if (!requestData || !requestData.questionAnswerPairs) {
+      throw new Error('Invalid request: questionAnswerPairs is required');
+    }
+    
     const { questionAnswerPairs, context } = requestData;
+    
+    // Check if questionAnswerPairs is an array
+    if (!Array.isArray(questionAnswerPairs) || questionAnswerPairs.length === 0) {
+      return new Response(
+        JSON.stringify({ results: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Prepare optimized prompt for batch processing
     const systemPrompt = `You are a medical intake assistant processing multiple patient responses efficiently. 

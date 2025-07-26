@@ -129,6 +129,7 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
   const processBatchValidation = async () => {
     if (batchValidationQueue.length === 0) return;
     
+    console.log('Processing batch validation for', batchValidationQueue.length, 'items');
     setIsProcessing(true);
     
     try {
@@ -144,36 +145,46 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
 
       // Apply all validated answers
       const validatedAnswers: Record<string, string> = {};
-      data.results.forEach((result: any, idx: number) => {
-        if (result.isValid) {
-          const item = batchValidationQueue[idx];
-          validatedAnswers[item.question.field] = result.processedAnswer;
-        }
-      });
+      if (data && data.results && Array.isArray(data.results)) {
+        data.results.forEach((result: any, idx: number) => {
+          if (result && result.isValid && batchValidationQueue[idx]) {
+            const item = batchValidationQueue[idx];
+            validatedAnswers[item.question.field] = result.processedAnswer || item.answer;
+          }
+        });
+      }
 
+      console.log('Validated answers from batch:', validatedAnswers);
       setAnswers(prev => ({ ...prev, ...validatedAnswers }));
       setBatchValidationQueue([]);
       setPendingAnswers({});
       
-      toast.success(`${Object.keys(validatedAnswers).length} answers validated!`);
+      if (Object.keys(validatedAnswers).length > 0) {
+        toast.success(`${Object.keys(validatedAnswers).length} answers validated!`);
+      }
       
     } catch (error) {
       console.error('Batch validation error:', error);
-      // Fallback to local validation
+      // Fallback to local validation for robustness
       const localAnswers: Record<string, string> = {};
       batchValidationQueue.forEach(item => {
         const local = validateLocally(item.question.field, item.answer);
-        if (local.isValid) {
-          localAnswers[item.question.field] = local.processedValue || item.answer;
-        }
+        localAnswers[item.question.field] = local.processedValue || item.answer;
       });
+      
+      console.log('Using local validation fallback:', localAnswers);
       setAnswers(prev => ({ ...prev, ...localAnswers }));
       setBatchValidationQueue([]);
       setPendingAnswers({});
+      
+      toast.info("Using local validation (AI unavailable)");
     } finally {
       setIsProcessing(false);
     }
@@ -295,10 +306,24 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
         }
       }, 200); // Minimal delay for UX
       
-    } else if (quickMode && currentQuestion.category === 'medical' && !currentQuestion.required) {
-      // Quick mode: skip optional medical questions with minimal validation
-      setAnswers(prev => ({ ...prev, [currentQuestion.field]: transcript }));
-      advanceToNext();
+    } else if (quickMode) {
+      // Quick mode: use only local validation, no batch processing
+      const finalAnswer = localValidation.processedValue || transcript;
+      setAnswers(prev => ({ ...prev, [currentQuestion.field]: finalAnswer }));
+      setValidationState('valid');
+      setValidationMessage("Quick validation - moving on...");
+      
+      toast.success("Answer accepted (quick mode)!");
+      
+      setTimeout(() => {
+        setCurrentTranscript("");
+        setValidationState('none');
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+        } else {
+          completeCheckIn();
+        }
+      }, 200);
       
     } else {
       // Add to batch validation queue for AI processing
@@ -383,27 +408,55 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
     }
   };
 
-  const completeCheckIn = () => {
-    // Merge confirmed answers with pending answers
+  const completeCheckIn = async () => {
+    console.log('Starting completeCheckIn...');
+    
+    // Wait for any pending batch validation to complete
+    if (batchValidationQueue.length > 0) {
+      console.log('Processing remaining batch validation...');
+      setIsProcessing(true);
+      await processBatchValidation();
+    }
+    
+    // Merge all answers (confirmed + pending + local fallbacks)
     const allAnswers = { ...answers, ...pendingAnswers };
+    console.log('All answers collected:', allAnswers);
+    
+    // Validate required fields and provide fallbacks
+    const requiredFields = questions.filter(q => q.required);
+    const missingFields = requiredFields.filter(q => !allAnswers[q.field] || allAnswers[q.field].trim() === '');
+    
+    if (missingFields.length > 0) {
+      console.log('Missing required fields:', missingFields.map(f => f.field));
+      toast.error(`Missing required fields: ${missingFields.map(f => f.field).join(', ')}`);
+      return;
+    }
     
     const formattedData = {
       fullName: allAnswers.fullName || "",
-      age: parseInt(allAnswers.age) || 0,
-      gender: allAnswers.gender as "Male" | "Female" | "Other",
+      age: parseInt(allAnswers.age) || 18,
+      gender: (allAnswers.gender as "Male" | "Female" | "Other") || "Other",
       phone: allAnswers.phone || "",
       emergencyContactName: allAnswers.emergencyContactName || "",
       emergencyContactPhone: allAnswers.emergencyContactPhone || "",
       emergencyContactRelation: allAnswers.emergencyContactRelation || "",
-      currentMedications: allAnswers.currentMedications || "",
-      allergies: allAnswers.allergies || "",
-      chronicConditions: allAnswers.chronicConditions || "",
-      pastSurgeries: allAnswers.pastSurgeries || "",
+      currentMedications: allAnswers.currentMedications || "None",
+      allergies: allAnswers.allergies || "None",
+      chronicConditions: allAnswers.chronicConditions || "None",
+      pastSurgeries: allAnswers.pastSurgeries || "None",
       chiefComplaint: allAnswers.chiefComplaint || "",
     };
 
-    onComplete(formattedData);
-    onClose();
+    console.log('Formatted data for completion:', formattedData);
+    
+    try {
+      onComplete(formattedData);
+      onClose();
+      toast.success("Voice check-in completed successfully!");
+    } catch (error) {
+      console.error('Error completing check-in:', error);
+      toast.error("Error completing check-in. Please try again.");
+    }
   };
 
   const toggleVideo = () => {
@@ -418,8 +471,25 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
   };
 
   const toggleQuickMode = () => {
-    setQuickMode(!quickMode);
-    toast.info(quickMode ? "Standard mode enabled" : "Quick mode enabled - minimal validation");
+    const newQuickMode = !quickMode;
+    setQuickMode(newQuickMode);
+    
+    if (newQuickMode) {
+      toast.info("Quick mode enabled - local validation only");
+      // In quick mode, process pending batch immediately with local validation
+      if (batchValidationQueue.length > 0) {
+        const localAnswers: Record<string, string> = {};
+        batchValidationQueue.forEach(item => {
+          const local = validateLocally(item.question.field, item.answer);
+          localAnswers[item.question.field] = local.processedValue || item.answer;
+        });
+        setAnswers(prev => ({ ...prev, ...localAnswers }));
+        setBatchValidationQueue([]);
+        setPendingAnswers({});
+      }
+    } else {
+      toast.info("Standard mode enabled - AI validation");
+    }
   };
 
   return (
