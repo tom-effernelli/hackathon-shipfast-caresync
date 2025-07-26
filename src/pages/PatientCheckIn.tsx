@@ -39,6 +39,7 @@ interface CheckInResult {
   patientId: string;
   qrCode: string;
   checkInTime: string;
+  analysis?: any;
 }
 
 const PatientCheckIn = () => {
@@ -84,19 +85,13 @@ const PatientCheckIn = () => {
   const onSubmit = async (data: PatientForm) => {
     setIsSubmitting(true);
     try {
-      const patientId = generatePatientId();
-      
-      // Structure the data according to your database schema
+      // Step 1: Create the Patient Record in Supabase
       const patientDataToInsert = {
         name: data.fullName,
         age: parseInt(data.age.toString(), 10),
         gender: data.gender,
         phone_number: data.phone,
-        
-        // The base64 string of the image goes here (if available)
         injury_image_base64: imageBase64,
-        
-        // All other form fields are nested inside this JSON object
         patient_submission_data: {
           emergency_contact: {
             name: data.emergencyContactName,
@@ -113,8 +108,7 @@ const PatientCheckIn = () => {
         }
       };
 
-      // Insert into Supabase patients table
-      const { data: insertedPatient, error } = await supabase
+      const { data: newPatient, error } = await supabase
         .from('patients')
         .insert(patientDataToInsert)
         .select()
@@ -124,16 +118,37 @@ const PatientCheckIn = () => {
         throw error;
       }
 
-      // Generate QR code after successful insertion
+      const patientId = newPatient.id;
+
+      // Step 2: Invoke the smart-handler Edge Function
+      const functionPayload = {
+        patientId: patientId,
+        ...data,
+        injury_image_base64: imageBase64
+      };
+
+      const { data: analysisResult, error: functionError } = await supabase.functions.invoke(
+        'smart-handler',
+        { body: functionPayload }
+      );
+
+      if (functionError) {
+        console.error('Analysis function error:', functionError);
+        // Continue with check-in even if analysis fails
+      }
+
+      // Generate QR code
       const qrCode = await generateQRCode(data, patientId);
       
+      // Step 3: Update the State and Display the Results
       setCheckInResult({
         patientId,
         qrCode,
         checkInTime: new Date().toLocaleString(),
+        analysis: analysisResult
       });
       
-      toast.success("Check-in successful! Your data has been submitted for analysis.");
+      toast.success("Check-in successful! Analysis complete.");
     } catch (error) {
       toast.error("Check-in failed. Please try again.");
       console.error('Check-in error:', error);
@@ -174,12 +189,36 @@ const PatientCheckIn = () => {
               </p>
             </CardHeader>
             <CardContent className="text-center space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <h3 className="font-semibold text-blue-900 mb-2">Analysis in Progress</h3>
-                <p className="text-sm text-blue-700">
-                  Your submission is being analyzed by our AI system. Medical staff will prioritize you based on the results.
-                </p>
-              </div>
+              {checkInResult.analysis && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <h3 className="font-semibold text-green-900 mb-4">Preliminary AI Triage Results</h3>
+                  <div className="space-y-3 text-left">
+                    <div>
+                      <span className="font-medium text-green-800">Triage Score: </span>
+                      <span className="text-green-700">{checkInResult.analysis.tri_score || 'Not determined'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-green-800">Main Reason: </span>
+                      <span className="text-green-700">{checkInResult.analysis.main_reason || 'Not specified'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-green-800">Estimated Wait Time: </span>
+                      <span className="text-green-700">
+                        {checkInResult.analysis.estimated_wait_time_minutes ? 
+                          `${checkInResult.analysis.estimated_wait_time_minutes} minutes` : 
+                          'To be determined'
+                        }
+                      </span>
+                    </div>
+                    {checkInResult.analysis.recommendations && (
+                      <div>
+                        <span className="font-medium text-green-800">Recommendations: </span>
+                        <span className="text-green-700">{checkInResult.analysis.recommendations}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               
               <div>
                 <h3 className="text-lg font-semibold mb-4">Your QR Code</h3>
