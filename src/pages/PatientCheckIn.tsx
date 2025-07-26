@@ -289,7 +289,7 @@ const PatientCheckIn = () => {
               className="min-w-[200px] h-16 text-lg"
             >
               <Mic className="w-6 h-6 mr-3" />
-              Voice Check-In (Transparent)
+              Voice Check-In
             </Button>
             <div className="text-sm text-muted-foreground self-center">or</div>
             <Button

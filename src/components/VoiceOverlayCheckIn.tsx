@@ -282,7 +282,7 @@ export const VoiceOverlayCheckIn: React.FC<VoiceOverlayProps> = ({
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50">
       {/* Question Bar */}
       <QuestionBar
         question={currentQuestion}
