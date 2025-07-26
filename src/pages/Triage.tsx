@@ -1,0 +1,460 @@
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Search, Activity, User, Heart, Phone, FileText, Camera, CheckCircle, Clock } from "lucide-react";
+import { toast } from "sonner";
+
+// Mock data for patients who completed self-check-in
+const mockCheckInPatients = [
+  {
+    patientId: "PT-1737915234567-A1B2",
+    fullName: "John Smith",
+    age: 45,
+    gender: "Male",
+    phone: "555-0123",
+    emergencyContactName: "Jane Smith",
+    emergencyContactPhone: "555-0124",
+    emergencyContactRelation: "Spouse",
+    currentMedications: "Lisinopril 10mg daily, Metformin 500mg twice daily",
+    allergies: "Penicillin, Peanuts",
+    chronicConditions: "Type 2 Diabetes, Hypertension",
+    pastSurgeries: "Appendectomy (2015)",
+    chiefComplaint: "Chest pain that started 2 hours ago, radiating to left arm",
+    checkInTime: "2024-01-25T14:30:00Z"
+  },
+  {
+    patientId: "PT-1737915234568-C3D4",
+    fullName: "Maria Garcia",
+    age: 28,
+    gender: "Female",
+    phone: "555-0234",
+    emergencyContactName: "Carlos Garcia",
+    emergencyContactPhone: "555-0235",
+    emergencyContactRelation: "Husband",
+    currentMedications: "None",
+    allergies: "None known",
+    chronicConditions: "None",
+    pastSurgeries: "None",
+    chiefComplaint: "Severe abdominal pain in lower right quadrant for the past 6 hours",
+    checkInTime: "2024-01-25T15:15:00Z"
+  }
+];
+
+const clinicalAssessmentSchema = z.object({
+  currentSymptoms: z.string().min(10, "Please describe current symptoms"),
+  painScale: z.number().min(0).max(10),
+  temperature: z.number().optional(),
+  bloodPressure: z.string().optional(),
+  heartRate: z.number().optional(),
+  respiratoryRate: z.number().optional(),
+  oxygenSaturation: z.number().optional(),
+  clinicalNotes: z.string().optional(),
+});
+
+type ClinicalAssessment = z.infer<typeof clinicalAssessmentSchema>;
+
+const Triage = () => {
+  const [selectedPatient, setSelectedPatient] = useState<typeof mockCheckInPatients[0] | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredPatients, setFilteredPatients] = useState(mockCheckInPatients);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+
+  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<ClinicalAssessment>({
+    resolver: zodResolver(clinicalAssessmentSchema),
+  });
+
+  useEffect(() => {
+    const filtered = mockCheckInPatients.filter(patient => 
+      patient.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      patient.patientId.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredPatients(filtered);
+  }, [searchQuery]);
+
+  const onSubmit = async (data: ClinicalAssessment) => {
+    if (!selectedPatient) {
+      toast.error("Please select a patient first");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      // Simulate AI analysis combining self-check-in data with clinical assessment
+      const combinedData = {
+        patientInfo: selectedPatient,
+        clinicalAssessment: data,
+      };
+
+      // Mock AI analysis result
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      setAnalysisResult({
+        urgencyLevel: "HIGH",
+        triageCategory: "ESI Level 2",
+        estimatedWaitTime: "15 minutes",
+        treatmentDuration: "2-4 hours",
+        redFlags: ["Chest pain with cardiac risk factors", "Age > 40"],
+        recommendations: [
+          "Immediate ECG",
+          "Cardiac enzymes (troponin)",
+          "Chest X-ray",
+          "IV access and oxygen",
+          "Cardiology consultation"
+        ],
+        confidence: 92
+      });
+
+      toast.success("Triage analysis complete");
+    } catch (error) {
+      toast.error("Analysis failed. Please try again.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handlePatientSelect = (patient: typeof mockCheckInPatients[0]) => {
+    setSelectedPatient(patient);
+    setSearchQuery("");
+    reset();
+    setAnalysisResult(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Activity className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl font-bold">Nurse/Doctor Triage Interface</h1>
+          </div>
+          <p className="text-muted-foreground">
+            Clinical assessment and AI-powered triage analysis
+          </p>
+        </div>
+
+        {/* Patient Lookup Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="w-5 h-5" />
+              Patient Lookup
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search patient by name or ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 text-lg h-12"
+                />
+              </div>
+              
+              {searchQuery && filteredPatients.length > 0 && (
+                <div className="border rounded-lg bg-background shadow-lg max-h-48 overflow-y-auto">
+                  {filteredPatients.map((patient) => (
+                    <div
+                      key={patient.patientId}
+                      className="p-3 hover:bg-accent cursor-pointer border-b last:border-b-0"
+                      onClick={() => handlePatientSelect(patient)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{patient.fullName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            ID: {patient.patientId} • Age: {patient.age} • {patient.gender}
+                          </p>
+                        </div>
+                        <Badge variant="secondary">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Checked In
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {selectedPatient && (
+          <div className="space-y-6">
+            {/* Patient Self-Check-in Data (Read-only) */}
+            <Card className="bg-muted/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Patient Provided Information
+                  <Badge variant="secondary">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Self Check-in Complete
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-muted/50 p-3 rounded-lg">
+                    <Label className="text-sm font-medium text-muted-foreground">Full Name</Label>
+                    <p className="font-medium">{selectedPatient.fullName}</p>
+                  </div>
+                  <div className="bg-muted/50 p-3 rounded-lg">
+                    <Label className="text-sm font-medium text-muted-foreground">Age</Label>
+                    <p className="font-medium">{selectedPatient.age}</p>
+                  </div>
+                  <div className="bg-muted/50 p-3 rounded-lg">
+                    <Label className="text-sm font-medium text-muted-foreground">Gender</Label>
+                    <p className="font-medium">{selectedPatient.gender}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-muted/50 p-3 rounded-lg">
+                    <Label className="text-sm font-medium text-muted-foreground">Current Medications</Label>
+                    <p className="text-sm">{selectedPatient.currentMedications || "None reported"}</p>
+                  </div>
+                  <div className="bg-muted/50 p-3 rounded-lg">
+                    <Label className="text-sm font-medium text-muted-foreground">Known Allergies</Label>
+                    <p className="text-sm">{selectedPatient.allergies || "None reported"}</p>
+                  </div>
+                </div>
+
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <Label className="text-sm font-medium text-muted-foreground">Chief Complaint</Label>
+                  <p className="text-sm">{selectedPatient.chiefComplaint}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Clinical Assessment Form */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Heart className="w-5 h-5" />
+                    Clinical Assessment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentSymptoms">Current Symptoms & Presentation *</Label>
+                    <Textarea
+                      id="currentSymptoms"
+                      {...register("currentSymptoms")}
+                      placeholder="Describe current symptoms, patient presentation, and clinical observations"
+                      className="min-h-[100px] resize-none"
+                    />
+                    {errors.currentSymptoms && (
+                      <p className="text-sm text-destructive">{errors.currentSymptoms.message}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="painScale">Pain Scale (0-10) *</Label>
+                      <Input
+                        id="painScale"
+                        type="number"
+                        min="0"
+                        max="10"
+                        {...register("painScale", { valueAsNumber: true })}
+                        className="text-lg h-12"
+                      />
+                      {errors.painScale && (
+                        <p className="text-sm text-destructive">{errors.painScale.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="temperature">Temperature (°F)</Label>
+                      <Input
+                        id="temperature"
+                        type="number"
+                        step="0.1"
+                        {...register("temperature", { valueAsNumber: true })}
+                        placeholder="98.6"
+                        className="text-lg h-12"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="bloodPressure">Blood Pressure</Label>
+                      <Input
+                        id="bloodPressure"
+                        {...register("bloodPressure")}
+                        placeholder="120/80"
+                        className="text-lg h-12"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="heartRate">Heart Rate (bpm)</Label>
+                      <Input
+                        id="heartRate"
+                        type="number"
+                        {...register("heartRate", { valueAsNumber: true })}
+                        placeholder="72"
+                        className="text-lg h-12"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="respiratoryRate">Respiratory Rate</Label>
+                      <Input
+                        id="respiratoryRate"
+                        type="number"
+                        {...register("respiratoryRate", { valueAsNumber: true })}
+                        placeholder="16"
+                        className="text-lg h-12"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="oxygenSaturation">O2 Saturation (%)</Label>
+                      <Input
+                        id="oxygenSaturation"
+                        type="number"
+                        min="0"
+                        max="100"
+                        {...register("oxygenSaturation", { valueAsNumber: true })}
+                        placeholder="98"
+                        className="text-lg h-12"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="clinicalNotes">Clinical Notes</Label>
+                    <Textarea
+                      id="clinicalNotes"
+                      {...register("clinicalNotes")}
+                      placeholder="Additional clinical observations, examination findings, and notes"
+                      className="min-h-[80px] resize-none"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Submit Button */}
+              <div className="text-center">
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={isAnalyzing}
+                  className="w-full md:w-auto min-w-[300px] h-14 text-lg"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                      Analyzing with Claude AI...
+                    </>
+                  ) : (
+                    <>
+                      <Activity className="w-5 h-5 mr-2" />
+                      Generate Triage Analysis
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+
+            {/* Analysis Results */}
+            {analysisResult && (
+              <Card className="border-primary bg-primary/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-primary">
+                    <Activity className="w-5 h-5" />
+                    AI Triage Analysis Results
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-background p-4 rounded-lg border">
+                      <Label className="text-sm font-medium text-muted-foreground">Urgency Level</Label>
+                      <Badge variant={analysisResult.urgencyLevel === 'HIGH' ? 'destructive' : 'secondary'} className="mt-1">
+                        {analysisResult.urgencyLevel}
+                      </Badge>
+                    </div>
+                    <div className="bg-background p-4 rounded-lg border">
+                      <Label className="text-sm font-medium text-muted-foreground">Triage Category</Label>
+                      <p className="font-bold text-lg">{analysisResult.triageCategory}</p>
+                    </div>
+                    <div className="bg-background p-4 rounded-lg border">
+                      <Label className="text-sm font-medium text-muted-foreground">Est. Wait Time</Label>
+                      <p className="font-bold text-lg flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        {analysisResult.estimatedWaitTime}
+                      </p>
+                    </div>
+                    <div className="bg-background p-4 rounded-lg border">
+                      <Label className="text-sm font-medium text-muted-foreground">Treatment Duration</Label>
+                      <p className="font-bold text-lg">{analysisResult.treatmentDuration}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-destructive/5 p-4 rounded-lg border border-destructive/20">
+                      <Label className="text-sm font-medium text-destructive">Red Flags</Label>
+                      <ul className="mt-2 space-y-1">
+                        {analysisResult.redFlags.map((flag: string, index: number) => (
+                          <li key={index} className="text-sm flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-destructive rounded-full" />
+                            {flag}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
+                      <Label className="text-sm font-medium text-primary">Recommendations</Label>
+                      <ul className="mt-2 space-y-1">
+                        {analysisResult.recommendations.map((rec: string, index: number) => (
+                          <li key={index} className="text-sm flex items-center gap-2">
+                            <CheckCircle className="w-3 h-3 text-primary" />
+                            {rec}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="text-center">
+                    <Badge variant="outline">
+                      Confidence Score: {analysisResult.confidence}%
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {!selectedPatient && (
+          <Card className="text-center py-12">
+            <CardContent>
+              <Search className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Select a Patient to Begin</h3>
+              <p className="text-muted-foreground">
+                Search for a patient who has completed self-check-in to start the triage assessment.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Triage;
