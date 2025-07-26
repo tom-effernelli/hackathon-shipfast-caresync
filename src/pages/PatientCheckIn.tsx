@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 import { supabase } from "@/integrations/supabase/client";
 import { ImageUpload } from "@/components/ImageUpload";
 import { VoiceCheckInOptimized } from "@/components/VoiceCheckInOptimized";
+import { VoiceOverlayCheckIn } from "@/components/VoiceOverlayCheckIn";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,8 @@ const patientSchema = z.object({
   age: z.number().min(1).max(120),
   gender: z.enum(["Male", "Female", "Other"]),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  insuranceNumber: z.string().optional(),
+  preferredLanguage: z.string().optional(),
   emergencyContactName: z.string().min(2, "Emergency contact name required"),
   emergencyContactPhone: z.string().min(10, "Emergency contact phone required"),
   emergencyContactRelation: z.string().min(2, "Relationship required"),
@@ -47,6 +50,7 @@ const PatientCheckIn = () => {
   const [checkInResult, setCheckInResult] = useState<CheckInResult | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [showVoiceCheckIn, setShowVoiceCheckIn] = useState(false);
+  const [showVoiceOverlay, setShowVoiceOverlay] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm<PatientForm>({
     resolver: zodResolver(patientSchema),
@@ -279,7 +283,7 @@ const PatientCheckIn = () => {
           {/* Check-in Method Selection */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             <Button
-              onClick={() => setShowVoiceCheckIn(true)}
+              onClick={() => setShowVoiceOverlay(true)}
               size="lg"
               variant="outline"
               className="min-w-[200px] h-16 text-lg"
@@ -370,6 +374,26 @@ const PatientCheckIn = () => {
                   {errors.phone && (
                     <p className="text-sm text-destructive">{errors.phone.message}</p>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="insuranceNumber">Insurance Number</Label>
+                  <Input
+                    id="insuranceNumber"
+                    {...register("insuranceNumber")}
+                    placeholder="Enter your insurance number (optional)"
+                    className="text-lg h-12"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="preferredLanguage">Preferred Language</Label>
+                  <Input
+                    id="preferredLanguage"
+                    {...register("preferredLanguage")}
+                    placeholder="Enter your preferred language (optional)"
+                    className="text-lg h-12"
+                  />
                 </div>
               </div>
             </CardContent>
@@ -535,6 +559,14 @@ const PatientCheckIn = () => {
           isOpen={showVoiceCheckIn}
           onClose={() => setShowVoiceCheckIn(false)}
           onComplete={handleVoiceCheckInComplete}
+        />
+
+        {/* Voice Overlay Check-In */}
+        <VoiceOverlayCheckIn
+          isActive={showVoiceOverlay}
+          onClose={() => setShowVoiceOverlay(false)}
+          setValue={setValue}
+          formErrors={errors}
         />
       </div>
     </div>
