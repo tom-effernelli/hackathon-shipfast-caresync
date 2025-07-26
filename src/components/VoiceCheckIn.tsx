@@ -191,6 +191,28 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
     setAutoAdvanceTimer(timer);
   };
 
+  const handleConfirmAnswer = () => {
+    if (currentTranscript.trim()) {
+      // Save the current transcribed answer
+      setAnswers(prev => ({
+        ...prev,
+        [currentQuestion.field]: currentTranscript.trim()
+      }));
+      
+      toast.success("Answer confirmed successfully!");
+      
+      // Clear current transcript
+      setCurrentTranscript("");
+      
+      // Move to next question
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+      } else {
+        completeCheckIn();
+      }
+    }
+  };
+
   const confirmAnswer = () => {
     if (autoAdvanceTimer) {
       clearInterval(autoAdvanceTimer);
@@ -639,35 +661,48 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
                  )}
 
                  <div className="space-y-3">
-                   {/* Recording Controls */}
-                   <div className="flex gap-2">
-                     <Button
-                       onClick={isRecording ? stopRecording : startRecording}
-                       disabled={isProcessing || isPlaying || showConfirmation}
-                       className={isRecording ? "bg-red-500 hover:bg-red-600" : ""}
-                       size="lg"
-                     >
-                       {isRecording ? (
-                         <>
-                           <MicOff className="w-5 h-5 mr-2" />
-                           Stop Recording
-                         </>
-                       ) : (
-                         <>
-                           <Mic className="w-5 h-5 mr-2" />
-                           Start Recording
-                         </>
-                       )}
-                     </Button>
+                    {/* Recording Controls */}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={isRecording ? stopRecording : startRecording}
+                        disabled={isProcessing || isPlaying || showConfirmation}
+                        className={isRecording ? "bg-red-500 hover:bg-red-600" : ""}
+                        size="lg"
+                      >
+                        {isRecording ? (
+                          <>
+                            <MicOff className="w-5 h-5 mr-2" />
+                            Stop Recording
+                          </>
+                        ) : (
+                          <>
+                            <Mic className="w-5 h-5 mr-2" />
+                            Start Recording
+                          </>
+                        )}
+                      </Button>
 
-                     <Button
-                       variant="outline"
-                       onClick={retryQuestion}
-                       disabled={isProcessing || isRecording || showConfirmation}
-                     >
-                       <RotateCcw className="w-4 h-4" />
-                     </Button>
-                   </div>
+                      {/* Manual Confirm Answer Button */}
+                      {currentTranscript && validationState === 'none' && (
+                        <Button
+                          onClick={handleConfirmAnswer}
+                          disabled={!currentTranscript.trim() || isProcessing || showConfirmation}
+                          className="bg-green-600 hover:bg-green-700"
+                          size="lg"
+                        >
+                          <Check className="w-5 h-5 mr-2" />
+                          Confirm Answer ✓
+                        </Button>
+                      )}
+
+                      <Button
+                        variant="outline"
+                        onClick={retryQuestion}
+                        disabled={isProcessing || isRecording || showConfirmation}
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                      </Button>
+                    </div>
 
                    {/* Manual Skip Option */}
                    {!showConfirmation && (
