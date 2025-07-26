@@ -73,8 +73,8 @@ To connect a domain, navigate to Project > Settings > Domains and click Connect 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
 
 ## Team
-[Orphéo]\
-[Basekou]\
-[Valentin]\
+[Orphéo]()\
+[Basekou]()\
+[Valentin]()\
 [Tom Effernelli](https://github.com/tom-effernelli)\
-[Paul Archer](https://github.com/archer-paul)\
+[Paul Archer](https://github.com/archer-paul)
