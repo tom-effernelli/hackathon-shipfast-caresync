@@ -25,7 +25,7 @@ import {
 import { fetchPatients, fetchDoctors } from "@/lib/supabase-data";
 import { toast } from "sonner";
 
-const Index = () => {
+const Dashboard = () => {
   const [patients, setPatients] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -309,7 +309,7 @@ const Index = () => {
                 </Button>
               </Link>
               
-              <Link to="/triage-workflow">
+              <Link to="/">
                 <Button variant="outline" className="w-full h-16 flex flex-col gap-1" size="lg">
                   <Activity className="w-5 h-5" />
                   <span>Workflow Board</span>
@@ -363,4 +363,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Dashboard;
