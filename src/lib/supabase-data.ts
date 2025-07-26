@@ -1,5 +1,21 @@
 import { supabase } from '@/integrations/supabase/client'
 
+// Input validation and sanitization
+function sanitizeString(input: string | undefined): string | undefined {
+  if (!input) return input
+  return input.trim().replace(/<[^>]*>/g, '') // Remove HTML tags
+}
+
+function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+function validatePhoneNumber(phone: string): boolean {
+  const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/
+  return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''))
+}
+
 export interface Patient {
   id: string
   name: string
@@ -46,12 +62,34 @@ export async function fetchPatients(): Promise<Patient[]> {
   }))
 }
 
-// Add new patient
+// Add new patient with validation
 export async function addPatient(patient: Omit<Patient, 'id' | 'created_at' | 'updated_at'>): Promise<Patient> {
+  // Input validation and sanitization
+  const sanitizedPatient = {
+    ...patient,
+    name: sanitizeString(patient.name) || '',
+    phone_number: patient.phone_number ? sanitizeString(patient.phone_number) : undefined,
+    medical_history: patient.medical_history ? sanitizeString(patient.medical_history) : undefined,
+    assigned_doctor: patient.assigned_doctor ? sanitizeString(patient.assigned_doctor) : undefined,
+  }
+
+  // Validate required fields
+  if (!sanitizedPatient.name) {
+    throw new Error('Patient name is required')
+  }
+  
+  if (sanitizedPatient.age < 0 || sanitizedPatient.age > 150) {
+    throw new Error('Invalid age provided')
+  }
+
+  if (sanitizedPatient.phone_number && !validatePhoneNumber(sanitizedPatient.phone_number)) {
+    throw new Error('Invalid phone number format')
+  }
+
   const { data, error } = await supabase
     .from('patients')
     .insert([{
-      ...patient,
+      ...sanitizedPatient,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }])
@@ -60,7 +98,7 @@ export async function addPatient(patient: Omit<Patient, 'id' | 'created_at' | 'u
 
   if (error) {
     console.error('Error adding patient:', error)
-    throw error
+    throw new Error(`Failed to add patient: ${error.message}`)
   }
 
   return {
