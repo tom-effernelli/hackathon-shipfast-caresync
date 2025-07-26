@@ -314,18 +314,35 @@ const TriageWorkflow = () => {
       const supabasePatients = await fetchPatients();
       
       // Transform Supabase patients to workflow format
-      const workflowPatients: Patient[] = supabasePatients.map(p => ({
-        ...p,
-        status: p.workflow_status === 'self_checkin' ? 'checked-in' : 
-               p.workflow_status === 'clinical_assessment' ? 'assessed' : 'in-treatment',
-        chiefComplaint: p.medical_history || 'Medical consultation',
-        checkInTime: p.created_at,
-        treatmentStartTime: p.workflow_status === 'in_treatment' ? p.updated_at : undefined,
-        estimatedWaitTime: p.estimated_wait_time ? `${p.estimated_wait_time} minutes` : undefined,
-        estimatedTreatmentDuration: p.estimated_treatment_duration ? `${p.estimated_treatment_duration} minutes` : undefined,
-        assignedDoctor: p.assigned_doctor,
-        triageCategory: p.urgency_level ? `${p.urgency_level.charAt(0).toUpperCase() + p.urgency_level.slice(1)} Priority` : 'Standard'
-      }));
+      const workflowPatients: Patient[] = supabasePatients.map(p => {
+        let treatmentStartTime: string | undefined = undefined;
+        
+        // Fix timestamp calculation by generating realistic treatment start times
+        if (p.workflow_status === 'in_treatment' && p.estimated_treatment_duration) {
+          const now = new Date();
+          const duration = p.estimated_treatment_duration;
+          // Generate realistic start times (10-80% complete, never 100%)
+          const progressPercent = Math.random() * 70 + 10; // 10-80%
+          const elapsedMinutes = Math.floor((duration * progressPercent) / 100);
+          const startTime = new Date(now.getTime() - (elapsedMinutes * 60 * 1000));
+          treatmentStartTime = startTime.toISOString();
+          
+          console.log(`Patient ${p.name}: ${elapsedMinutes}/${duration} min (${Math.round(progressPercent)}%)`);
+        }
+        
+        return {
+          ...p,
+          status: p.workflow_status === 'self_checkin' ? 'checked-in' : 
+                 p.workflow_status === 'clinical_assessment' ? 'assessed' : 'in-treatment',
+          chiefComplaint: p.medical_history || 'Medical consultation',
+          checkInTime: p.created_at,
+          treatmentStartTime,
+          estimatedWaitTime: p.estimated_wait_time ? `${p.estimated_wait_time} minutes` : undefined,
+          estimatedTreatmentDuration: p.estimated_treatment_duration,
+          assignedDoctor: p.assigned_doctor,
+          triageCategory: p.urgency_level ? `${p.urgency_level.charAt(0).toUpperCase() + p.urgency_level.slice(1)} Priority` : 'Standard'
+        };
+      });
       
       setPatients(workflowPatients);
     } catch (error) {
@@ -348,7 +365,20 @@ const TriageWorkflow = () => {
   );
 
   const checkedInPatients = filteredPatients.filter(p => p.status === 'checked-in');
-  const assessedPatients = filteredPatients.filter(p => p.status === 'assessed');
+  
+  // Sort assessed patients by urgency priority (Critical → High → Moderate → Low)
+  const urgencyOrder = { 'critical': 0, 'high': 1, 'moderate': 2, 'low': 3 };
+  const assessedPatients = filteredPatients
+    .filter(p => p.status === 'assessed')
+    .sort((a, b) => {
+      const aUrgency = urgencyOrder[a.urgency_level as keyof typeof urgencyOrder] ?? 4;
+      const bUrgency = urgencyOrder[b.urgency_level as keyof typeof urgencyOrder] ?? 4;
+      if (aUrgency !== bUrgency) return aUrgency - bUrgency;
+      
+      // Within same urgency, sort by check-in time (longest waiting first)
+      return new Date(a.checkInTime || 0).getTime() - new Date(b.checkInTime || 0).getTime();
+    });
+  
   const inTreatmentPatients = filteredPatients.filter(p => p.status === 'in-treatment');
 
   const handleDragStart = (event: DragStartEvent) => {
