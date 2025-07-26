@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { User, Heart, CheckCircle, Activity } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { User, Heart, CheckCircle, Activity, Brain, AlertTriangle, Clock, Target, CheckSquare, AlertCircle, ChevronDown, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
 
 const clinicalAssessmentSchema = z.object({
@@ -83,6 +84,19 @@ export const ClinicalAssessmentModal = ({
 
   if (!patient) return null;
 
+  // Parse AI analysis result
+  const aiAnalysis = patient.aura_analysis_result ? 
+    (typeof patient.aura_analysis_result === 'string' ? 
+      JSON.parse(patient.aura_analysis_result) : 
+      patient.aura_analysis_result) : null;
+
+  const getTriScoreColor = (triScore: string) => {
+    if (triScore?.toLowerCase().includes('tri i')) return 'bg-red-100 text-red-800 border-red-200';
+    if (triScore?.toLowerCase().includes('tri ii')) return 'bg-orange-100 text-orange-800 border-orange-200';
+    if (triScore?.toLowerCase().includes('tri iii')) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    return 'bg-gray-100 text-gray-800 border-gray-200';
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -127,6 +141,187 @@ export const ClinicalAssessmentModal = ({
               </div>
             </CardContent>
           </Card>
+
+          {/* AI Analysis Section */}
+          {aiAnalysis && (
+            <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 animate-fade-in">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3">
+                  <div className="relative">
+                    <Brain className="w-6 h-6 text-blue-600 animate-pulse" />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-ping"></div>
+                  </div>
+                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold">
+                    🤖 Analyse IA Préliminaire
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Tri Score - Main highlight */}
+                <div className="flex justify-center animate-scale-in">
+                  <Badge className={`text-lg px-6 py-2 font-bold text-center ${getTriScoreColor(aiAnalysis.tri_score)}`}>
+                    <Target className="w-5 h-5 mr-2" />
+                    Score de Tri: {aiAnalysis.tri_score}
+                  </Badge>
+                </div>
+
+                {/* Main reason */}
+                {aiAnalysis.main_reason && (
+                  <Card className="bg-white/70 border-blue-200 animate-fade-in" style={{animationDelay: '0.1s'}}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Stethoscope className="w-5 h-5 text-blue-600" />
+                        <Label className="font-semibold text-blue-800">Raison Principale</Label>
+                      </div>
+                      <p className="text-lg font-medium">{aiAnalysis.main_reason}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Alarming signs */}
+                {aiAnalysis.alarming_signs && aiAnalysis.alarming_signs.length > 0 && (
+                  <Card className="bg-red-50 border-red-200 animate-fade-in" style={{animationDelay: '0.2s'}}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                        <Label className="font-semibold text-red-800">Signes Alarmants</Label>
+                      </div>
+                      <div className="space-y-2">
+                        {aiAnalysis.alarming_signs.map((sign: string, index: number) => (
+                          <div key={index} className="flex items-start gap-2 animate-fade-in" style={{animationDelay: `${0.3 + index * 0.1}s`}}>
+                            <AlertCircle className="w-4 h-4 text-red-500 mt-1 flex-shrink-0" />
+                            <span className="text-red-700">{sign}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Data used and missing - side by side */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Data used */}
+                  {aiAnalysis.data_used && aiAnalysis.data_used.length > 0 && (
+                    <Card className="bg-green-50 border-green-200 animate-fade-in" style={{animationDelay: '0.3s'}}>
+                      <CardContent className="pt-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <CheckSquare className="w-5 h-5 text-green-600" />
+                          <Label className="font-semibold text-green-800">Données Utilisées</Label>
+                        </div>
+                        <div className="space-y-2">
+                          {aiAnalysis.data_used.map((data: string, index: number) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                              <span className="text-green-700 text-sm">{data}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Missing data */}
+                  {aiAnalysis.missing_data && aiAnalysis.missing_data.length > 0 && (
+                    <Card className="bg-orange-50 border-orange-200 animate-fade-in" style={{animationDelay: '0.4s'}}>
+                      <CardContent className="pt-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <AlertCircle className="w-5 h-5 text-orange-600" />
+                          <Label className="font-semibold text-orange-800">Données Manquantes</Label>
+                        </div>
+                        <div className="space-y-2">
+                          {aiAnalysis.missing_data.map((data: string, index: number) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                              <span className="text-orange-700 text-sm">{data}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Estimations */}
+                {(aiAnalysis.estimated_wait_time_minutes || aiAnalysis.estimated_treatment_duration_minutes) && (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {aiAnalysis.estimated_wait_time_minutes && (
+                      <Card className="bg-blue-50 border-blue-200 animate-fade-in" style={{animationDelay: '0.5s'}}>
+                        <CardContent className="pt-4 text-center">
+                          <Clock className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                          <Label className="block font-semibold text-blue-800 mb-1">Temps d'Attente Estimé</Label>
+                          <p className="text-2xl font-bold text-blue-600">{aiAnalysis.estimated_wait_time_minutes} min</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {aiAnalysis.estimated_treatment_duration_minutes && (
+                      <Card className="bg-purple-50 border-purple-200 animate-fade-in" style={{animationDelay: '0.6s'}}>
+                        <CardContent className="pt-4 text-center">
+                          <Activity className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                          <Label className="block font-semibold text-purple-800 mb-1">Durée de Traitement</Label>
+                          <p className="text-2xl font-bold text-purple-600">{aiAnalysis.estimated_treatment_duration_minutes} min</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                {/* Expandable sections for justification and recommendations */}
+                <div className="space-y-3">
+                  {aiAnalysis.justification && (
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between hover:bg-blue-50">
+                          <span className="flex items-center gap-2">
+                            <Target className="w-4 h-4" />
+                            Justification de l'Analyse
+                          </span>
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <Card className="mt-2 bg-white/70">
+                          <CardContent className="pt-4">
+                            <p className="text-sm leading-relaxed">{aiAnalysis.justification}</p>
+                          </CardContent>
+                        </Card>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
+                  {aiAnalysis.recommendations && (
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between hover:bg-green-50">
+                          <span className="flex items-center gap-2">
+                            <CheckSquare className="w-4 h-4" />
+                            Recommandations
+                          </span>
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <Card className="mt-2 bg-white/70">
+                          <CardContent className="pt-4">
+                            <p className="text-sm leading-relaxed">{aiAnalysis.recommendations}</p>
+                          </CardContent>
+                        </Card>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* No AI Analysis Message */}
+          {!aiAnalysis && (
+            <Card className="bg-muted/30 border-dashed">
+              <CardContent className="pt-6 text-center">
+                <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                <p className="text-muted-foreground">Aucune analyse IA préliminaire disponible pour ce patient.</p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Clinical Assessment Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
