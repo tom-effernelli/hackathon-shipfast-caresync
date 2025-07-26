@@ -69,6 +69,9 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
   const [timeRemaining, setTimeRemaining] = useState(10);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
+  const [validationState, setValidationState] = useState<'none' | 'validating' | 'valid' | 'invalid'>('none');
+  const [validationMessage, setValidationMessage] = useState("");
+  const [autoAdvanceCountdown, setAutoAdvanceCountdown] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -132,8 +135,8 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
         recognitionRef.current.onend = () => {
           setIsRecording(false);
           if (currentTranscript.trim()) {
-            setShowConfirmation(true);
-            startAutoAdvanceTimer();
+            // Automatically validate with Claude
+            processAnswerWithAutoValidation(currentTranscript.trim());
           }
         };
 
@@ -278,6 +281,92 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
   const stopRecording = () => {
     if (recognitionRef.current && isRecording) {
       recognitionRef.current.stop();
+    }
+  };
+
+  const processAnswerWithAutoValidation = async (transcript: string) => {
+    if (!transcript.trim()) return;
+
+    setValidationState('validating');
+    setValidationMessage("Checking your answer...");
+    setIsProcessing(true);
+    
+    try {
+      // Send to Claude for processing and validation
+      const { data, error } = await supabase.functions.invoke('process-voice-answer', {
+        body: {
+          question: currentQuestion,
+          answer: transcript,
+          context: { questionIndex: currentQuestionIndex, previousAnswers: answers }
+        }
+      });
+
+      if (error) throw error;
+
+      const processedAnswer = data.processedAnswer;
+      const isValid = data.isValid;
+      const confidence = data.confidence || 0;
+      const suggestions = data.suggestions;
+
+      if (isValid && confidence > 0.8) {
+        // High confidence auto-advance
+        setValidationState('valid');
+        setValidationMessage("Great! Moving to next question...");
+        
+        // Save the answer
+        setAnswers(prev => ({
+          ...prev,
+          [currentQuestion.field]: processedAnswer
+        }));
+
+        toast.success("Answer recorded successfully!");
+
+        // Auto-advance countdown
+        setAutoAdvanceCountdown(3);
+        const countdownTimer = setInterval(() => {
+          setAutoAdvanceCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(countdownTimer);
+              // Move to next question
+              if (currentQuestionIndex < questions.length - 1) {
+                setCurrentQuestionIndex(prev => prev + 1);
+              } else {
+                completeCheckIn();
+              }
+              setValidationState('none');
+              setCurrentTranscript("");
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else if (isValid && confidence > 0.5) {
+        // Medium confidence - show confirmation
+        setValidationState('valid');
+        setValidationMessage("Please confirm this answer");
+        setShowConfirmation(true);
+        startAutoAdvanceTimer();
+      } else {
+        // Low confidence or invalid - ask for clarification
+        setValidationState('invalid');
+        setValidationMessage(suggestions || 'Could not understand the answer clearly');
+        toast.error(`Please clarify: ${suggestions || 'Could not understand the answer'}`);
+        setTimeout(() => {
+          speakQuestion(`I didn't quite understand. ${suggestions || 'Could you please repeat your answer?'}`);
+          setValidationState('none');
+        }, 2000);
+      }
+      
+    } catch (error) {
+      console.error('Error processing answer:', error);
+      setValidationState('invalid');
+      setValidationMessage("Error processing your answer");
+      toast.error("Error processing your answer. Please try again.");
+      setTimeout(() => {
+        setValidationState('none');
+      }, 3000);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -464,7 +553,45 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
                 <h3 className="text-xl font-semibold mb-4">Current Question</h3>
                 <p className="text-lg mb-6">{currentQuestion?.text}</p>
                 
-                 {currentTranscript && (
+                 {/* Validation State Display */}
+                 {validationState !== 'none' && (
+                   <div className={`rounded-lg p-4 mb-4 ${
+                     validationState === 'validating' ? 'bg-blue-50 border border-blue-200' :
+                     validationState === 'valid' ? 'bg-green-50 border border-green-200' :
+                     'bg-red-50 border border-red-200'
+                   }`}>
+                     <div className="flex items-center gap-2 mb-2">
+                       {validationState === 'validating' && (
+                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                       )}
+                       {validationState === 'valid' && autoAdvanceCountdown > 0 && (
+                         <div className="flex items-center gap-1 text-green-600">
+                           <CheckCircle className="w-4 h-4" />
+                           <span className="text-sm font-medium">Auto-advancing in {autoAdvanceCountdown}s</span>
+                         </div>
+                       )}
+                       {validationState === 'invalid' && (
+                         <AlertCircle className="w-4 h-4 text-red-600" />
+                       )}
+                     </div>
+                     <p className={`text-sm font-medium ${
+                       validationState === 'validating' ? 'text-blue-900' :
+                       validationState === 'valid' ? 'text-green-900' :
+                       'text-red-900'
+                     }`}>
+                       {validationMessage}
+                     </p>
+                     {currentTranscript && validationState !== 'validating' && (
+                       <p className={`mt-2 ${
+                         validationState === 'valid' ? 'text-green-800' : 'text-red-800'
+                       }`}>
+                         "{currentTranscript}"
+                       </p>
+                     )}
+                   </div>
+                 )}
+
+                 {currentTranscript && validationState === 'none' && (
                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                      <p className="text-sm font-medium text-blue-900 mb-1">Your answer:</p>
                      <p className="text-blue-800">{currentTranscript}</p>
