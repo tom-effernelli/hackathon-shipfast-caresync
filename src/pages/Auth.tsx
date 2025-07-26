@@ -46,7 +46,7 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10">
         <div className="text-center space-y-4">
-          <Heart className="h-12 w-12 text-primary mx-auto animate-pulse" />
+          <Heart className="h-12 w-12 text-primary mx-auto" />
           <p className="text-muted-foreground">Loading medical portal...</p>
         </div>
       </div>

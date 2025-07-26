@@ -94,7 +94,7 @@ export function PatientCard({
   }
 
   return (
-    <Card className={`hover:shadow-md transition-all duration-200 ${getCardBorderClass(patient.urgency_level)} ${shouldShowAlert() ? 'animate-pulse' : ''}`}>
+    <Card className={`hover:shadow-md transition-all duration-200 ${getCardBorderClass(patient.urgency_level)}`}>
       <CardContent className="p-4">
         {/* Ultra-Compact Header */}
         <div className="flex items-center justify-between mb-3">

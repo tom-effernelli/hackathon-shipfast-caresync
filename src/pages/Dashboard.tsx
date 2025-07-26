@@ -119,7 +119,7 @@ const Dashboard = () => {
             <div className="text-right text-sm text-muted-foreground">
               <div>Last updated: {lastRefresh.toLocaleTimeString()}</div>
               <div className="flex items-center gap-1 mt-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span>Live data</span>
               </div>
             </div>
