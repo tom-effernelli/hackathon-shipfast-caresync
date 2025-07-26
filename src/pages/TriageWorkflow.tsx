@@ -180,7 +180,12 @@ const PatientCard = ({
 
         {patient.status === 'assessed' && <>
             <div className="space-y-2">
-              <Badge variant={getUrgencyColor(patient.urgency_level || 'low')} className="text-xs bg-orange-100 text-orange-800 border-orange-200">
+              <Badge variant={getUrgencyColor(patient.urgency_level || 'low')} className={`text-xs ${
+                patient.urgency_level === 'critical' ? 'bg-red-100 text-red-800 border-red-200' :
+                patient.urgency_level === 'high' ? 'bg-red-50 text-red-700 border-red-200' :
+                patient.urgency_level === 'moderate' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                'bg-green-100 text-green-800 border-green-200'
+              }`}>
                 <AlertTriangle className="w-3 h-3 mr-1" />
                 {patient.triageCategory}
               </Badge>
