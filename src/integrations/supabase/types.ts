@@ -42,12 +42,17 @@ export type Database = {
         Row: {
           age: number
           assigned_doctor: string | null
+          aura_analysis_result: Json | null
           created_at: string
           estimated_treatment_duration: number | null
           estimated_wait_time: number | null
+          gender: string | null
           id: string
+          injury_image_base64: string | null
           medical_history: string | null
           name: string
+          patient_submission_data: Json | null
+          phone_number: string | null
           updated_at: string
           urgency_level: string | null
           workflow_status: string
@@ -55,12 +60,17 @@ export type Database = {
         Insert: {
           age: number
           assigned_doctor?: string | null
+          aura_analysis_result?: Json | null
           created_at?: string
           estimated_treatment_duration?: number | null
           estimated_wait_time?: number | null
+          gender?: string | null
           id?: string
+          injury_image_base64?: string | null
           medical_history?: string | null
           name: string
+          patient_submission_data?: Json | null
+          phone_number?: string | null
           updated_at?: string
           urgency_level?: string | null
           workflow_status?: string
@@ -68,12 +78,17 @@ export type Database = {
         Update: {
           age?: number
           assigned_doctor?: string | null
+          aura_analysis_result?: Json | null
           created_at?: string
           estimated_treatment_duration?: number | null
           estimated_wait_time?: number | null
+          gender?: string | null
           id?: string
+          injury_image_base64?: string | null
           medical_history?: string | null
           name?: string
+          patient_submission_data?: Json | null
+          phone_number?: string | null
           updated_at?: string
           urgency_level?: string | null
           workflow_status?: string

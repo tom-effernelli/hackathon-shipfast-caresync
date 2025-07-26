@@ -3,17 +3,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import QRCode from "qrcode";
-import { addPatient } from "@/lib/supabase-data";
-import { ImageAnalysisResult } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import { ImageUpload } from "@/components/ImageUpload";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { QrCode, User, Heart, Phone, UserCheck, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,15 +38,14 @@ interface CheckInResult {
   patientId: string;
   qrCode: string;
   checkInTime: string;
-  preliminaryAssessment?: ImageAnalysisResult;
 }
 
 const PatientCheckIn = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkInResult, setCheckInResult] = useState<CheckInResult | null>(null);
-  const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysisResult | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<PatientForm>({
+  const { register, handleSubmit, formState: { errors }, setValue } = useForm<PatientForm>({
     resolver: zodResolver(patientSchema),
   });
 
@@ -57,8 +53,7 @@ const PatientCheckIn = () => {
     return `PT-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
   };
 
-  const generateQRCode = async (patientData: PatientForm): Promise<string> => {
-    const patientId = generatePatientId();
+  const generateQRCode = async (patientData: PatientForm, patientId: string): Promise<string> => {
     const qrData = {
       patientId,
       name: patientData.fullName,
@@ -87,44 +82,56 @@ const PatientCheckIn = () => {
   const onSubmit = async (data: PatientForm) => {
     setIsSubmitting(true);
     try {
-      // Generate QR code
-      const qrCode = await generateQRCode(data);
       const patientId = generatePatientId();
       
-      // Determine urgency level from image analysis or default to low
-      const urgencyLevel = imageAnalysis?.urgency_level || 'low';
-      const estimatedWaitTime = imageAnalysis ? 
-        (imageAnalysis.urgency_level === 'critical' ? 0 :
-         imageAnalysis.urgency_level === 'high' ? 15 :
-         imageAnalysis.urgency_level === 'moderate' ? 45 : 120) : 120;
-      
-      // Store patient data in Supabase
-      await addPatient({
+      // Structure the data according to your database schema
+      const patientDataToInsert = {
         name: data.fullName,
-        age: data.age,
-        medical_history: [
-          data.chronicConditions,
-          data.currentMedications,
-          data.allergies,
-          data.pastSurgeries
-        ].filter(Boolean).join('; '),
-        workflow_status: 'self_checkin',
-        urgency_level: urgencyLevel,
-        estimated_wait_time: estimatedWaitTime
-      });
-      
-      console.log('Patient data stored in Supabase:', data);
+        age: parseInt(data.age.toString(), 10),
+        gender: data.gender,
+        phone_number: data.phone,
+        
+        // The base64 string of the image goes here (if available)
+        injury_image_base64: imageBase64,
+        
+        // All other form fields are nested inside this JSON object
+        patient_submission_data: {
+          emergency_contact: {
+            name: data.emergencyContactName,
+            phone: data.emergencyContactPhone,
+            relationship: data.emergencyContactRelation,
+          },
+          medical_history: {
+            medications: data.currentMedications,
+            allergies: data.allergies,
+            chronic_conditions: data.chronicConditions,
+            past_surgeries: data.pastSurgeries,
+          },
+          chief_complaint: data.chiefComplaint,
+        }
+      };
+
+      // Insert into Supabase patients table
+      const { data: insertedPatient, error } = await supabase
+        .from('patients')
+        .insert(patientDataToInsert)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      // Generate QR code after successful insertion
+      const qrCode = await generateQRCode(data, patientId);
       
       setCheckInResult({
         patientId,
         qrCode,
         checkInTime: new Date().toLocaleString(),
-        preliminaryAssessment: imageAnalysis || undefined
       });
       
-      toast.success(imageAnalysis ? 
-        `Check-in successful! Preliminary urgency: ${urgencyLevel.toUpperCase()}` :
-        "Check-in successful! Please save your QR code.");
+      toast.success("Check-in successful! Your data has been submitted for analysis.");
     } catch (error) {
       toast.error("Check-in failed. Please try again.");
       console.error('Check-in error:', error);
@@ -133,9 +140,8 @@ const PatientCheckIn = () => {
     }
   };
 
-  const handleImageAnalysis = (analysis: ImageAnalysisResult) => {
-    setImageAnalysis(analysis);
-    toast.success(`Image analysis complete! Preliminary urgency: ${analysis.urgency_level.toUpperCase()}`);
+  const handleImageSelect = (imageBase64String: string | null) => {
+    setImageBase64(imageBase64String);
   };
 
   if (checkInResult) {
@@ -156,25 +162,12 @@ const PatientCheckIn = () => {
               </p>
             </CardHeader>
             <CardContent className="text-center space-y-6">
-              {checkInResult.preliminaryAssessment && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <h3 className="font-semibold text-blue-900 mb-2">Preliminary Assessment Complete</h3>
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <span className="text-sm">Urgency Level:</span>
-                    <Badge className={
-                      checkInResult.preliminaryAssessment.urgency_level === 'critical' ? 'bg-red-100 text-red-800' :
-                      checkInResult.preliminaryAssessment.urgency_level === 'high' ? 'bg-orange-100 text-orange-800' :
-                      checkInResult.preliminaryAssessment.urgency_level === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
-                    }>
-                      {checkInResult.preliminaryAssessment.urgency_level.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-blue-700">
-                    You will be prioritized based on this assessment and your clinical evaluation.
-                  </p>
-                </div>
-              )}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h3 className="font-semibold text-blue-900 mb-2">Analysis in Progress</h3>
+                <p className="text-sm text-blue-700">
+                  Your submission is being analyzed by our AI system. Medical staff will prioritize you based on the results.
+                </p>
+              </div>
               
               <div>
                 <h3 className="text-lg font-semibold mb-4">Your QR Code</h3>
@@ -432,7 +425,7 @@ const PatientCheckIn = () => {
 
           {/* Image Upload Section */}
           <ImageUpload 
-            onAnalysisComplete={handleImageAnalysis}
+            onImageSelect={handleImageSelect}
             disabled={isSubmitting}
           />
 

@@ -4,12 +4,17 @@ export interface Patient {
   id: string
   name: string
   age: number
+  gender?: string
+  phone_number?: string
   medical_history?: string
   workflow_status: 'self_checkin' | 'clinical_assessment' | 'in_treatment'
   urgency_level?: 'critical' | 'high' | 'moderate' | 'low'
   estimated_wait_time?: number
   estimated_treatment_duration?: number
   assigned_doctor?: string
+  patient_submission_data?: any
+  injury_image_base64?: string
+  aura_analysis_result?: any
   created_at: string
   updated_at: string
 }
