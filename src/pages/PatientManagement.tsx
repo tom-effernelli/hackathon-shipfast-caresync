@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Search, Users, Activity, Brain, UserCircle } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { PatientCard } from '@/components/PatientCard'
+import { Search, Users, Activity, Brain, LayoutGrid, List } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { 
   fetchPatients, 
@@ -23,10 +24,15 @@ export default function PatientManagement() {
   const [loading, setLoading] = useState(true)
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
   const [isMatching, setIsMatching] = useState(false)
+  const [isDetailedView, setIsDetailedView] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     loadData()
+    
+    // Auto-refresh data every 30 seconds for real-time updates
+    const interval = setInterval(loadData, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const loadData = async () => {
@@ -159,22 +165,67 @@ export default function PatientManagement() {
     patient.id.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const getStatusColor = (status: Patient['workflow_status']) => {
-    switch (status) {
-      case 'self_checkin': return 'bg-blue-100 text-blue-800'
-      case 'clinical_assessment': return 'bg-orange-100 text-orange-800'
-      case 'in_treatment': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
+  // Sort patients by urgency priority
+  const urgencyOrder = { 'critical': 0, 'high': 1, 'moderate': 2, 'low': 3 }
+  const sortedPatients = [...filteredPatients].sort((a, b) => {
+    const aUrgency = urgencyOrder[a.urgency_level as keyof typeof urgencyOrder] ?? 4
+    const bUrgency = urgencyOrder[b.urgency_level as keyof typeof urgencyOrder] ?? 4
+    if (aUrgency !== bUrgency) return aUrgency - bUrgency
+    
+    // Within same urgency, sort by check-in time (longest waiting first)
+    return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+  })
+
+  // Group patients by urgency for organized display
+  const groupedPatients = {
+    critical: sortedPatients.filter(p => p.urgency_level === 'critical'),
+    high: sortedPatients.filter(p => p.urgency_level === 'high'),
+    moderate: sortedPatients.filter(p => p.urgency_level === 'moderate'),
+    low: sortedPatients.filter(p => p.urgency_level === 'low'),
+    other: sortedPatients.filter(p => !p.urgency_level || !['critical', 'high', 'moderate', 'low'].includes(p.urgency_level))
   }
 
-  const getUrgencyColor = (urgency?: Patient['urgency_level']) => {
+  const handleViewDetails = (patient: Patient) => {
+    setSelectedPatient(patient)
+    // In a real app, this might open a modal or navigate to a detail page
+    toast({
+      title: "Patient Details",
+      description: `Viewing details for ${patient.name}`,
+    })
+  }
+
+  const getUrgencyGroupInfo = (urgency: string) => {
     switch (urgency) {
-      case 'critical': return 'bg-red-100 text-red-800'
-      case 'high': return 'bg-orange-100 text-orange-800'
-      case 'moderate': return 'bg-yellow-100 text-yellow-800'
-      case 'low': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'critical': return { 
+        label: 'Critical', 
+        color: 'bg-red-500 text-white', 
+        count: groupedPatients.critical.length,
+        icon: '🔴'
+      }
+      case 'high': return { 
+        label: 'High Priority', 
+        color: 'bg-orange-500 text-white', 
+        count: groupedPatients.high.length,
+        icon: '🟠'
+      }
+      case 'moderate': return { 
+        label: 'Moderate', 
+        color: 'bg-yellow-500 text-white', 
+        count: groupedPatients.moderate.length,
+        icon: '🟡'
+      }
+      case 'low': return { 
+        label: 'Low Priority', 
+        color: 'bg-green-500 text-white', 
+        count: groupedPatients.low.length,
+        icon: '🟢'
+      }
+      default: return { 
+        label: 'Other', 
+        color: 'bg-gray-500 text-white', 
+        count: groupedPatients.other.length,
+        icon: '⚪'
+      }
     }
   }
 
@@ -198,19 +249,34 @@ export default function PatientManagement() {
           </p>
         </div>
         
-        <div className="flex gap-2">
-          <Button onClick={handleRankPatients} className="flex items-center gap-2">
-            <Brain className="w-4 h-4" />
-            AI Rank Patients
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleMatchAllPatients}
-            disabled={isMatching}
-          >
-            <Users className="w-4 h-4 mr-2" />
-            {isMatching ? 'Matching...' : 'Match Doctors'}
-          </Button>
+        <div className="flex items-center gap-4">
+          {/* View Toggle */}
+          <div className="flex items-center gap-2">
+            <List className="w-4 h-4" />
+            <Switch 
+              checked={isDetailedView}
+              onCheckedChange={setIsDetailedView}
+            />
+            <LayoutGrid className="w-4 h-4" />
+            <span className="text-sm text-muted-foreground">
+              {isDetailedView ? 'Detailed' : 'Compact'}
+            </span>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button onClick={handleRankPatients} className="flex items-center gap-2">
+              <Brain className="w-4 h-4" />
+              AI Rank Patients
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleMatchAllPatients}
+              disabled={isMatching}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              {isMatching ? 'Matching...' : 'Match Doctors'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -256,12 +322,13 @@ export default function PatientManagement() {
         </Card>
       </div>
 
+      {/* Search Bar */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
-              Patient List
+              Patient Management ({sortedPatients.length})
             </CardTitle>
             <div className="relative w-64">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -274,82 +341,62 @@ export default function PatientManagement() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredPatients.map((patient) => (
-              <div key={patient.id} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <UserCircle className="w-5 h-5 text-muted-foreground" />
-                      <span className="font-semibold">{patient.name}</span>
-                      <Badge variant="outline">Age {patient.age}</Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      ID: {patient.id}
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Badge className={getStatusColor(patient.workflow_status)}>
-                      {patient.workflow_status.replace('_', ' ').toUpperCase()}
-                    </Badge>
-                    {patient.urgency_level && (
-                      <Badge className={getUrgencyColor(patient.urgency_level)}>
-                        {patient.urgency_level.toUpperCase()}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
+      </Card>
 
-                {patient.medical_history && (
-                  <div className="text-sm">
-                    <span className="font-medium">Medical History: </span>
-                    {patient.medical_history}
-                  </div>
+      {/* Patient Cards by Urgency Groups */}
+      <div className="space-y-6">
+        {(['critical', 'high', 'moderate', 'low', 'other'] as const).map(urgencyLevel => {
+          const groupInfo = getUrgencyGroupInfo(urgencyLevel)
+          const patientsInGroup = groupedPatients[urgencyLevel]
+          
+          if (patientsInGroup.length === 0) return null
+
+          return (
+            <div key={urgencyLevel} className="space-y-4">
+              {/* Urgency Group Header */}
+              <div className="flex items-center gap-3">
+                <Badge className={`${groupInfo.color} px-3 py-1 text-sm font-semibold`}>
+                  {groupInfo.icon} {groupInfo.label} ({groupInfo.count})
+                </Badge>
+                {urgencyLevel === 'critical' && (
+                  <Badge variant="outline" className="text-red-600 border-red-200">
+                    Immediate Attention Required
+                  </Badge>
                 )}
-
-                {(patient.estimated_wait_time || patient.estimated_treatment_duration) && (
-                  <div className="flex gap-4 text-sm">
-                    {patient.estimated_wait_time && (
-                      <span>Wait Time: {patient.estimated_wait_time} min</span>
-                    )}
-                    {patient.estimated_treatment_duration && (
-                      <span>Treatment Duration: {patient.estimated_treatment_duration} min</span>
-                    )}
-                  </div>
-                )}
-
-                <Separator />
-
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleMatchDoctors(patient)}
-                    disabled={isMatching}
-                  >
-                    {isMatching ? 'Matching...' : 'Match Doctors'}
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handlePredictMortality(patient)}
-                  >
-                    Risk Analysis
-                  </Button>
-                </div>
               </div>
-            ))}
 
-            {filteredPatients.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
+              {/* Patient Cards Grid */}
+              <div className={`grid gap-4 ${
+                isDetailedView 
+                  ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2' 
+                  : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              }`}>
+                {patientsInGroup.map((patient) => (
+                  <PatientCard
+                    key={patient.id}
+                    patient={patient}
+                    isDetailed={isDetailedView}
+                    onMatchDoctor={handleMatchDoctors}
+                    onRiskAnalysis={handlePredictMortality}
+                    onViewDetails={handleViewDetails}
+                    isMatching={isMatching}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
+
+        {sortedPatients.length === 0 && (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="text-muted-foreground">
                 {searchTerm ? 'No patients found matching your search.' : 'No patients found.'}
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }
