@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { fetchPatients, updatePatientStatus, type Patient as SupabasePatient } from "@/lib/supabase-data";
+import { demoPatients } from "@/lib/demo-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Search, Clock, User, Activity, AlertTriangle, CheckCircle, UserCheck, Stethoscope, Timer, Heart, BarChart3 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Search, Clock, User, Activity, AlertTriangle, CheckCircle, UserCheck, Stethoscope, Timer, Heart, BarChart3, TrendingUp, Users } from "lucide-react";
 import { toast } from "sonner";
 import { ClinicalAssessmentModal } from "@/components/ClinicalAssessmentModal";
+import { LiveNotification } from "@/components/LiveNotification";
 interface Patient extends SupabasePatient {
   status?: 'checked-in' | 'assessed' | 'in-treatment';
   chiefComplaint?: string;
@@ -91,6 +95,20 @@ const PatientCard = ({
     transition,
     opacity: isDragging ? 0.5 : 1
   };
+
+  const getPatientInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  const getAvatarColor = (urgency?: string) => {
+    switch (urgency) {
+      case 'critical': return 'bg-red-500 text-white';
+      case 'high': return 'bg-orange-500 text-white'; 
+      case 'moderate': return 'bg-yellow-600 text-white';
+      case 'low': return 'bg-green-500 text-white';
+      default: return 'bg-primary text-primary-foreground';
+    }
+  };
   const getUrgencyColor = (level: string) => {
     switch (level) {
       case 'critical':
@@ -145,21 +163,43 @@ const PatientCard = ({
     ? { onClick: handleCardClick }
     : { ...attributes, ...listeners };
 
-  return <Card 
+  return <motion.div
     ref={setNodeRef} 
-    style={style} 
-    {...cardProps}
-    className={`${patient.status === 'checked-in' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary' : ''}`}
+    style={style}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    transition={{ duration: 0.3 }}
+    whileHover={{ y: -2, transition: { duration: 0.2 } }}
   >
+    <Card 
+      {...cardProps}
+      className={`${patient.status === 'checked-in' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} hover:shadow-lg transition-all duration-300 ${isDragging ? 'ring-2 ring-primary' : ''} ${patient.urgency_level === 'critical' ? 'ring-2 ring-red-500 shadow-red-500/20' : ''}`}
+    >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium">{patient.name}</CardTitle>
+          <div className="flex items-center gap-3">
+            <Avatar className="w-8 h-8">
+              <AvatarFallback className={getAvatarColor(patient.urgency_level)}>
+                {getPatientInitials(patient.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <CardTitle className="text-sm font-medium">{patient.name}</CardTitle>
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <span>{patient.age}y</span>
+                {patient.gender && <span>• {patient.gender[0].toUpperCase()}</span>}
+              </div>
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground">
-            Age {patient.age}
-          </div>
+          {patient.urgency_level === 'critical' && (
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+            >
+              <Heart className="w-4 h-4 text-red-500" />
+            </motion.div>
+          )}
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-3">
@@ -233,7 +273,8 @@ const PatientCard = ({
             </div>
           </>}
       </CardContent>
-    </Card>;
+    </Card>
+  </motion.div>;
 };
 const Column = ({
   title,
@@ -263,19 +304,35 @@ const Column = ({
         </CardHeader>
         <CardContent className="p-4 h-[calc(100vh-200px)] overflow-y-auto">
           <SortableContext items={patients.map(p => p.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3">
-              {patients.map(patient => (
-                <PatientCard 
-                  key={patient.id} 
-                  patient={patient} 
-                  onCardClick={status === 'checked-in' ? onPatientCardClick : undefined}
-                />
-              ))}
-              {patients.length === 0 && <div className="text-center py-8 text-muted-foreground">
-                  <Icon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No patients in this stage</p>
-                </div>}
-            </div>
+            <AnimatePresence>
+              <div className="space-y-3">
+                {patients.map((patient, index) => (
+                  <motion.div
+                    key={patient.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                  >
+                    <PatientCard 
+                      patient={patient} 
+                      onCardClick={status === 'checked-in' ? onPatientCardClick : undefined}
+                    />
+                  </motion.div>
+                ))}
+                {patients.length === 0 && (
+                  <motion.div 
+                    className="text-center py-8 text-muted-foreground"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Icon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No patients in this stage</p>
+                  </motion.div>
+                )}
+              </div>
+            </AnimatePresence>
           </SortableContext>
         </CardContent>
       </Card>
@@ -292,10 +349,26 @@ const TriageWorkflow = () => {
   }, []);
   const loadPatients = async () => {
     try {
-      const supabasePatients = await fetchPatients();
+      // Use demo data for impressive pitch demo
+      const isDemoMode = true; // Toggle for demo vs real data
+      
+      let sourcePatients;
+      if (isDemoMode) {
+        sourcePatients = demoPatients.map((p, index) => ({
+          ...p,
+          id: `demo-${index}`,
+          created_at: p.checkInTime || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          patient_submission_data: null,
+          injury_image_base64: null,
+          aura_analysis_result: null
+        }));
+      } else {
+        sourcePatients = await fetchPatients();
+      }
 
-      // Transform Supabase patients to workflow format
-      const workflowPatients: Patient[] = supabasePatients.map(p => {
+      // Transform patients to workflow format
+      const workflowPatients: Patient[] = sourcePatients.map(p => {
         let treatmentStartTime: string | undefined = undefined;
 
         // Fix timestamp calculation by generating realistic treatment start times
@@ -414,6 +487,7 @@ const TriageWorkflow = () => {
 
   const activePatient = activeId ? patients.find(p => p.id === activeId) : null;
   return <div className="min-h-screen bg-background p-4">
+      <LiveNotification />
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-2 mb-4">
@@ -433,60 +507,74 @@ const TriageWorkflow = () => {
             <Input placeholder="Search patients..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-4 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, staggerChildren: 0.1 }}
+        >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Card className="hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-primary">{patients.length}</div>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Users className="w-5 h-5 text-primary" />
+                  <div className="text-2xl font-bold text-primary">{patients.length}</div>
+                </div>
                 <div className="text-sm text-muted-foreground">Total Patients</div>
               </CardContent>
             </Card>
-            <Card>
+          </motion.div>
+          
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <Card className="hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-blue-600">{checkedInPatients.length}</div>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Clock className="w-5 h-5 text-orange-500" />
+                  <div className="text-2xl font-bold text-orange-500">{checkedInPatients.length}</div>
+                </div>
                 <div className="text-sm text-muted-foreground">Awaiting Assessment</div>
               </CardContent>
             </Card>
-            <Card>
+          </motion.div>
+          
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <Card className="hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-orange-600">{assessedPatients.length}</div>
-                <div className="text-sm text-muted-foreground">Awaiting Treatment</div>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                  <div className="text-2xl font-bold text-yellow-500">{assessedPatients.length}</div>
+                </div>
+                <div className="text-sm text-muted-foreground">Ready for Treatment</div>
               </CardContent>
             </Card>
-            <Card>
+          </motion.div>
+          
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <Card className="hover:shadow-md transition-all duration-300">
               <CardContent className="p-4 text-center">
-                <div className="text-2xl font-bold text-green-600">{inTreatmentPatients.length}</div>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Activity className="w-5 h-5 text-green-500" />
+                  <div className="text-2xl font-bold text-green-500">{inTreatmentPatients.length}</div>
+                </div>
                 <div className="text-sm text-muted-foreground">In Treatment</div>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
+        </motion.div>
         </div>
 
-        {/* Kanban Board */}
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Column 
-              title="Self Check-In Complete" 
-              patients={checkedInPatients} 
-              status="checked-in" 
-              icon={UserCheck} 
-              themeColor="blue" 
-              onPatientCardClick={handlePatientCardClick}
-            />
-            <Column 
-              title="Clinical Assessment Complete" 
-              patients={assessedPatients} 
-              status="assessed" 
-              icon={Heart} 
-              themeColor="orange" 
-            />
-            <Column 
-              title="In Treatment" 
-              patients={inTreatmentPatients} 
-              status="in-treatment" 
-              icon={Activity} 
-              themeColor="green" 
-            />
-          </div>
+        {/* Workflow Columns */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[600px]">
+              <Column title="Check-in" patients={checkedInPatients} status="checked-in" icon={UserCheck} themeColor="blue" onPatientCardClick={handlePatientCardClick} />
+              <Column title="Clinical Assessment" patients={assessedPatients} status="assessed" icon={Stethoscope} themeColor="orange" />
+              <Column title="Treatment" patients={inTreatmentPatients} status="in-treatment" icon={Activity} themeColor="green" />
+            </div>
 
           <DragOverlay>
             {activePatient && <PatientCard patient={activePatient} isDragging />}
@@ -500,6 +588,7 @@ const TriageWorkflow = () => {
           onClose={handleModalClose}
           onPatientUpdated={handlePatientUpdated}
         />
+        </motion.div>
       </div>
     </div>;
 };
