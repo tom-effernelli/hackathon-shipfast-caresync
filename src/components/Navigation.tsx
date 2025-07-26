@@ -9,8 +9,9 @@ export function Navigation() {
     { path: "/", label: "Home", icon: Home },
     { path: "/patient-checkin", label: "Patient Check-In", icon: UserCheck },
     { path: "/triage", label: "Triage Analysis", icon: Activity },
-    { path: "/triage-workflow", label: "Triage Board", icon: Kanban },
     { path: "/patient-management", label: "Patient Management", icon: Users },
+    { path: "/triage-workflow", label: "Triage Board", icon: Kanban },
+    { path: "/statistics", label: "Statistics", icon: Activity },
   ];
 
   return (

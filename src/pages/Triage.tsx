@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, Activity, User, Heart, Phone, FileText, Camera, CheckCircle, Clock } from "lucide-react";
+import { Search, Activity, User, Heart, Phone, FileText, Camera, CheckCircle, Clock, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 const clinicalAssessmentSchema = z.object({
@@ -34,6 +34,7 @@ const Triage = () => {
   const [filteredPatients, setFilteredPatients] = useState<any[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [showQrScanner, setShowQrScanner] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<ClinicalAssessment>({
     resolver: zodResolver(clinicalAssessmentSchema),
@@ -120,8 +121,19 @@ const Triage = () => {
   const handlePatientSelect = (patient: any) => {
     setSelectedPatient(patient);
     setSearchQuery("");
+    setShowQrScanner(false);
     reset();
     setAnalysisResult(null);
+  };
+
+  const handleQrScan = (patientId: string) => {
+    const patient = checkInPatients.find(p => p.id === patientId);
+    if (patient) {
+      handlePatientSelect(patient);
+      toast.success(`Patient ${patient.name} loaded from QR code`);
+    } else {
+      toast.error("Patient not found or not checked in");
+    }
   };
 
   return (
@@ -147,15 +159,50 @@ const Triage = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search patient by name or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 text-lg h-12"
-                />
+              <div className="flex gap-4">
+                <Button
+                  variant={showQrScanner ? "default" : "outline"}
+                  onClick={() => setShowQrScanner(!showQrScanner)}
+                  className="flex items-center gap-2"
+                >
+                  <QrCode className="w-4 h-4" />
+                  {showQrScanner ? "Hide QR Scanner" : "Scan QR Code"}
+                </Button>
+                
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search patient by name or ID..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 text-lg h-12"
+                    disabled={showQrScanner}
+                  />
+                </div>
               </div>
+
+              {showQrScanner && (
+                <div className="border-2 border-dashed border-primary/50 rounded-lg p-6 text-center bg-primary/5">
+                  <QrCode className="w-12 h-12 mx-auto text-primary mb-4" />
+                  <h3 className="font-semibold mb-2">QR Code Scanner</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Scan the patient's QR code from their check-in receipt
+                  </p>
+                  <Input
+                    placeholder="Enter patient ID from QR code..."
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && e.currentTarget.value) {
+                        handleQrScan(e.currentTarget.value);
+                        e.currentTarget.value = '';
+                      }
+                    }}
+                    className="max-w-md mx-auto"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    For demo: Press Enter after typing patient ID
+                  </p>
+                </div>
+              )}
               
               {searchQuery && filteredPatients.length > 0 && (
                 <div className="border rounded-lg bg-background shadow-lg max-h-48 overflow-y-auto">

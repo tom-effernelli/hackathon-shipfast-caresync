@@ -148,9 +148,9 @@ export default function PatientManagement() {
             <Brain className="w-4 h-4" />
             AI Rank Patients
           </Button>
-          <Button variant="outline" onClick={loadData}>
-            <Activity className="w-4 h-4 mr-2" />
-            Refresh
+          <Button variant="outline" onClick={() => matchDoctors('', '')}>
+            <Users className="w-4 h-4 mr-2" />
+            Match Doctors
           </Button>
         </div>
       </div>

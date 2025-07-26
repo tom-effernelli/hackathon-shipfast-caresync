@@ -9,6 +9,7 @@ import PatientCheckIn from "./pages/PatientCheckIn";
 import PatientManagement from "./pages/PatientManagement";
 import Triage from "./pages/Triage";
 import TriageWorkflow from "./pages/TriageWorkflow";
+import Statistics from "./pages/Statistics";
 import { Navigation } from "@/components/Navigation";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/patient-management" element={<PatientManagement />} />
           <Route path="/triage" element={<Triage />} />
           <Route path="/triage-workflow" element={<TriageWorkflow />} />
+          <Route path="/statistics" element={<Statistics />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
