@@ -137,7 +137,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
-            Détails du Patient: {patient.name}
+            Patient Details: {patient.name}
           </DialogTitle>
         </DialogHeader>
 
@@ -148,7 +148,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Activity className="w-4 h-4" />
-                  Statut Actuel
+                  Current Status
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -165,11 +165,11 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                 <div className="text-sm text-muted-foreground">
                   <p className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    Enregistré le: {formatDate(patient.created_at)}
+                    Registered on: {formatDate(patient.created_at)}
                   </p>
                   <p className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    Dernière mise à jour: {formatDate(patient.updated_at)}
+                    Last updated: {formatDate(patient.updated_at)}
                   </p>
                 </div>
               </CardContent>
@@ -179,14 +179,14 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  Informations Personnelles
+                  Personal Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {isEditMode ? (
                   <div className="space-y-3">
                     <div>
-                      <Label htmlFor="name">Nom</Label>
+                      <Label htmlFor="name">Name</Label>
                       <Input
                         id="name"
                         value={editData.name || ''}
@@ -195,7 +195,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label htmlFor="age">Âge</Label>
+                        <Label htmlFor="age">Age</Label>
                         <Input
                           id="age"
                           type="number"
@@ -204,21 +204,21 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                         />
                       </div>
                       <div>
-                        <Label htmlFor="gender">Sexe</Label>
+                        <Label htmlFor="gender">Gender</Label>
                         <Select value={editData.gender || ''} onValueChange={(value) => setEditData(prev => ({ ...prev, gender: value }))}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner" />
+                            <SelectValue placeholder="Select" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="male">Homme</SelectItem>
-                            <SelectItem value="female">Femme</SelectItem>
-                            <SelectItem value="other">Autre</SelectItem>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="phone">Téléphone</Label>
+                      <Label htmlFor="phone">Phone</Label>
                       <Input
                         id="phone"
                         value={editData.phone_number || ''}
@@ -228,8 +228,8 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                   </div>
                 ) : (
                   <div className="space-y-2 text-sm">
-                    <p><strong>Âge:</strong> {patient.age} ans</p>
-                    <p><strong>Sexe:</strong> {patient.gender || 'Non spécifié'}</p>
+                    <p><strong>Age:</strong> {patient.age} years</p>
+                    <p><strong>Gender:</strong> {patient.gender || 'Not specified'}</p>
                     {patient.phone_number && (
                       <p className="flex items-center gap-1">
                         <Phone className="w-3 h-3" />
@@ -247,14 +247,14 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Stethoscope className="w-4 h-4" />
-                Informations Médicales
+                Medical Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {isEditMode ? (
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="medical_history">Antécédents Médicaux</Label>
+                    <Label htmlFor="medical_history">Medical History</Label>
                     <Textarea
                       id="medical_history"
                       value={editData.medical_history || ''}
@@ -263,7 +263,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                     />
                   </div>
                   <div>
-                    <Label htmlFor="current_symptoms">Symptômes Actuels</Label>
+                    <Label htmlFor="current_symptoms">Current Symptoms</Label>
                     <Textarea
                       id="current_symptoms"
                       value={editData.current_symptoms || ''}
@@ -272,7 +272,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                     />
                   </div>
                   <div>
-                    <Label htmlFor="clinical_notes">Notes Cliniques</Label>
+                    <Label htmlFor="clinical_notes">Clinical Notes</Label>
                     <Textarea
                       id="clinical_notes"
                       value={editData.clinical_notes || ''}
@@ -282,21 +282,21 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="urgency">Niveau d'Urgence</Label>
+                      <Label htmlFor="urgency">Urgency Level</Label>
                       <Select value={editData.urgency_level || ''} onValueChange={(value) => setEditData(prev => ({ ...prev, urgency_level: value }))}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner" />
+                          <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low">Faible</SelectItem>
-                          <SelectItem value="moderate">Modérée</SelectItem>
-                          <SelectItem value="high">Élevée</SelectItem>
-                          <SelectItem value="critical">Critique</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="moderate">Moderate</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="critical">Critical</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="assigned_doctor">Médecin Assigné</Label>
+                      <Label htmlFor="assigned_doctor">Assigned Doctor</Label>
                       <Input
                         id="assigned_doctor"
                         value={editData.assigned_doctor || ''}
@@ -309,25 +309,25 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                 <div className="space-y-3">
                   {patient.medical_history && (
                     <div>
-                      <Label className="text-sm font-medium">Antécédents Médicaux</Label>
+                      <Label className="text-sm font-medium">Medical History</Label>
                       <p className="text-sm text-muted-foreground mt-1">{patient.medical_history}</p>
                     </div>
                   )}
                   {patient.current_symptoms && (
                     <div>
-                      <Label className="text-sm font-medium">Symptômes Actuels</Label>
+                      <Label className="text-sm font-medium">Current Symptoms</Label>
                       <p className="text-sm text-muted-foreground mt-1">{patient.current_symptoms}</p>
                     </div>
                   )}
                   {patient.clinical_notes && (
                     <div>
-                      <Label className="text-sm font-medium">Notes Cliniques</Label>
+                      <Label className="text-sm font-medium">Clinical Notes</Label>
                       <p className="text-sm text-muted-foreground mt-1">{patient.clinical_notes}</p>
                     </div>
                   )}
                   {patient.assigned_doctor && (
                     <div>
-                      <Label className="text-sm font-medium">Médecin Assigné</Label>
+                      <Label className="text-sm font-medium">Assigned Doctor</Label>
                       <p className="text-sm text-muted-foreground mt-1">Dr. {patient.assigned_doctor}</p>
                     </div>
                   )}
@@ -341,14 +341,14 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Heart className="w-4 h-4" />
-                Signes Vitaux
+                Vital Signs
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isEditMode ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
-                    <Label htmlFor="heart_rate">Rythme Cardiaque (bpm)</Label>
+                    <Label htmlFor="heart_rate">Heart Rate (bpm)</Label>
                     <Input
                       id="heart_rate"
                       type="number"
@@ -357,7 +357,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                     />
                   </div>
                   <div>
-                    <Label htmlFor="blood_pressure">Tension Artérielle</Label>
+                    <Label htmlFor="blood_pressure">Blood Pressure</Label>
                     <Input
                       id="blood_pressure"
                       value={editData.blood_pressure || ''}
@@ -365,7 +365,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                     />
                   </div>
                   <div>
-                    <Label htmlFor="temperature">Température (°F)</Label>
+                    <Label htmlFor="temperature">Temperature (°F)</Label>
                     <Input
                       id="temperature"
                       type="number"
@@ -375,7 +375,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                     />
                   </div>
                   <div>
-                    <Label htmlFor="respiratory_rate">Fréquence Respiratoire</Label>
+                    <Label htmlFor="respiratory_rate">Respiratory Rate</Label>
                     <Input
                       id="respiratory_rate"
                       type="number"
@@ -384,7 +384,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                     />
                   </div>
                   <div>
-                    <Label htmlFor="o2_saturation">Saturation O2 (%)</Label>
+                    <Label htmlFor="o2_saturation">O2 Saturation (%)</Label>
                     <Input
                       id="o2_saturation"
                       type="number"
@@ -393,7 +393,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                     />
                   </div>
                   <div>
-                    <Label htmlFor="pain_scale">Échelle de Douleur (1-10)</Label>
+                    <Label htmlFor="pain_scale">Pain Scale (1-10)</Label>
                     <Input
                       id="pain_scale"
                       type="number"
@@ -436,7 +436,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                   )}
                   {patient.pain_scale && (
                     <div>
-                      <span className="font-medium">Douleur:</span> {patient.pain_scale}/10
+                      <span className="font-medium">Pain:</span> {patient.pain_scale}/10
                     </div>
                   )}
                 </div>
@@ -449,14 +449,14 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                Informations de Timing
+                Timing Information
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isEditMode ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="estimated_wait_time">Temps d'Attente Estimé (min)</Label>
+                    <Label htmlFor="estimated_wait_time">Estimated Wait Time (min)</Label>
                     <Input
                       id="estimated_wait_time"
                       type="number"
@@ -465,7 +465,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
                     />
                   </div>
                   <div>
-                    <Label htmlFor="estimated_treatment_duration">Durée de Traitement Estimée (min)</Label>
+                    <Label htmlFor="estimated_treatment_duration">Estimated Treatment Duration (min)</Label>
                     <Input
                       id="estimated_treatment_duration"
                       type="number"
@@ -477,10 +477,10 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
               ) : (
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Temps d'attente estimé:</span> {patient.estimated_wait_time ? `${patient.estimated_wait_time} min` : 'Non défini'}
+                    <span className="font-medium">Estimated wait time:</span> {patient.estimated_wait_time ? `${patient.estimated_wait_time} min` : 'Not defined'}
                   </div>
                   <div>
-                    <span className="font-medium">Durée de traitement estimée:</span> {patient.estimated_treatment_duration ? `${patient.estimated_treatment_duration} min` : 'Non définie'}
+                    <span className="font-medium">Estimated treatment duration:</span> {patient.estimated_treatment_duration ? `${patient.estimated_treatment_duration} min` : 'Not defined'}
                   </div>
                 </div>
               )}
@@ -494,22 +494,22 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onPatientUpdated
               <>
                 <Button variant="outline" onClick={handleCancel} disabled={isUpdating}>
                   <X className="w-4 h-4 mr-1" />
-                  Annuler
+                  Cancel
                 </Button>
                 <Button onClick={handleSave} disabled={isUpdating}>
                   <Save className="w-4 h-4 mr-1" />
-                  {isUpdating ? 'Sauvegarde...' : 'Sauvegarder'}
+                  {isUpdating ? 'Saving...' : 'Save'}
                 </Button>
               </>
             ) : (
               <>
                 <Button variant="outline" onClick={onClose}>
                   <Eye className="w-4 h-4 mr-1" />
-                  Fermer
+                  Close
                 </Button>
                 <Button onClick={handleEdit}>
                   <Edit2 className="w-4 h-4 mr-1" />
-                  Éditer
+                  Edit
                 </Button>
               </>
             )}
