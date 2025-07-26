@@ -14,7 +14,12 @@ import {
   AlertCircle,
   RotateCcw,
   ArrowRight,
-  X
+  X,
+  Camera,
+  Timer,
+  Edit3,
+  Check,
+  SkipForward
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,6 +64,11 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
   const [hasAudioPermission, setHasAudioPermission] = useState(false);
   const [hasVideoPermission, setHasVideoPermission] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [autoAdvanceTimer, setAutoAdvanceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState(10);
+  const [showPhotoCapture, setShowPhotoCapture] = useState(false);
+  const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -122,7 +132,8 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
         recognitionRef.current.onend = () => {
           setIsRecording(false);
           if (currentTranscript.trim()) {
-            processAnswer(currentTranscript.trim());
+            setShowConfirmation(true);
+            startAutoAdvanceTimer();
           }
         };
 
@@ -152,6 +163,78 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
     // Stop speech recognition
     if (recognitionRef.current) {
       recognitionRef.current.stop();
+    }
+
+    // Clear timers
+    if (autoAdvanceTimer) {
+      clearInterval(autoAdvanceTimer);
+    }
+  };
+
+  const startAutoAdvanceTimer = () => {
+    setTimeRemaining(10);
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          if (showConfirmation) {
+            skipToNext();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    setAutoAdvanceTimer(timer);
+  };
+
+  const confirmAnswer = () => {
+    if (autoAdvanceTimer) {
+      clearInterval(autoAdvanceTimer);
+      setAutoAdvanceTimer(null);
+    }
+    setShowConfirmation(false);
+    processAnswer(currentTranscript);
+  };
+
+  const skipToNext = () => {
+    if (autoAdvanceTimer) {
+      clearInterval(autoAdvanceTimer);
+      setAutoAdvanceTimer(null);
+    }
+    setShowConfirmation(false);
+    setCurrentTranscript("");
+    
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    } else {
+      completeCheckIn();
+    }
+  };
+
+  const retryAnswer = () => {
+    if (autoAdvanceTimer) {
+      clearInterval(autoAdvanceTimer);
+      setAutoAdvanceTimer(null);
+    }
+    setShowConfirmation(false);
+    setCurrentTranscript("");
+    startRecording();
+  };
+
+  const capturePhoto = async () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      const video = videoRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        const photoDataUrl = canvas.toDataURL('image/jpeg');
+        setCapturedPhotos(prev => [...prev, photoDataUrl]);
+        toast.success("Photo captured successfully!");
+      }
     }
   };
 
@@ -381,76 +464,117 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
                 <h3 className="text-xl font-semibold mb-4">Current Question</h3>
                 <p className="text-lg mb-6">{currentQuestion?.text}</p>
                 
-                {currentTranscript && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm font-medium text-blue-900 mb-1">Your answer:</p>
-                    <p className="text-blue-800">{currentTranscript}</p>
-                  </div>
-                )}
+                 {currentTranscript && (
+                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                     <p className="text-sm font-medium text-blue-900 mb-1">Your answer:</p>
+                     <p className="text-blue-800">{currentTranscript}</p>
+                   </div>
+                 )}
 
-                <div className="space-y-3">
-                  {/* Recording Controls */}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={isRecording ? stopRecording : startRecording}
-                      disabled={isProcessing || isPlaying}
-                      className={isRecording ? "bg-red-500 hover:bg-red-600" : ""}
-                      size="lg"
-                    >
-                      {isRecording ? (
-                        <>
-                          <MicOff className="w-5 h-5 mr-2" />
-                          Stop Recording
-                        </>
-                      ) : (
-                        <>
-                          <Mic className="w-5 h-5 mr-2" />
-                          Start Recording
-                        </>
-                      )}
-                    </Button>
+                 {/* Confirmation Interface */}
+                 {showConfirmation && currentTranscript && (
+                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                     <div className="flex items-center justify-between mb-3">
+                       <p className="text-sm font-medium text-green-900">Is this correct?</p>
+                       <div className="flex items-center gap-1 text-orange-600">
+                         <Timer className="w-4 h-4" />
+                         <span className="text-sm">{timeRemaining}s</span>
+                       </div>
+                     </div>
+                     <p className="text-green-800 mb-3">"{currentTranscript}"</p>
+                     <div className="flex gap-2">
+                       <Button
+                         onClick={confirmAnswer}
+                         size="sm"
+                         className="bg-green-600 hover:bg-green-700"
+                       >
+                         <Check className="w-4 h-4 mr-1" />
+                         Confirm
+                       </Button>
+                       <Button
+                         onClick={retryAnswer}
+                         variant="outline"
+                         size="sm"
+                       >
+                         <RotateCcw className="w-4 h-4 mr-1" />
+                         Retry
+                       </Button>
+                       <Button
+                         onClick={skipToNext}
+                         variant="outline"
+                         size="sm"
+                       >
+                         <SkipForward className="w-4 h-4 mr-1" />
+                         Skip
+                       </Button>
+                     </div>
+                   </div>
+                 )}
 
-                    <Button
-                      variant="outline"
-                      onClick={retryQuestion}
-                      disabled={isProcessing || isRecording}
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
-                  </div>
+                 <div className="space-y-3">
+                   {/* Recording Controls */}
+                   <div className="flex gap-2">
+                     <Button
+                       onClick={isRecording ? stopRecording : startRecording}
+                       disabled={isProcessing || isPlaying || showConfirmation}
+                       className={isRecording ? "bg-red-500 hover:bg-red-600" : ""}
+                       size="lg"
+                     >
+                       {isRecording ? (
+                         <>
+                           <MicOff className="w-5 h-5 mr-2" />
+                           Stop Recording
+                         </>
+                       ) : (
+                         <>
+                           <Mic className="w-5 h-5 mr-2" />
+                           Start Recording
+                         </>
+                       )}
+                     </Button>
 
-                  {/* Navigation Controls */}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={goToPreviousQuestion}
-                      disabled={currentQuestionIndex === 0 || isProcessing}
-                    >
-                      Previous
-                    </Button>
+                     <Button
+                       variant="outline"
+                       onClick={retryQuestion}
+                       disabled={isProcessing || isRecording || showConfirmation}
+                     >
+                       <RotateCcw className="w-4 h-4" />
+                     </Button>
+                   </div>
 
-                    {!currentQuestion?.required && (
-                      <Button
-                        variant="outline"
-                        onClick={skipQuestion}
-                        disabled={isProcessing}
-                      >
-                        Skip
-                      </Button>
-                    )}
+                   {/* Manual Skip Option */}
+                   {!showConfirmation && (
+                     <div className="flex gap-2">
+                       <Button
+                         variant="outline"
+                         onClick={goToPreviousQuestion}
+                         disabled={currentQuestionIndex === 0 || isProcessing}
+                       >
+                         Previous
+                       </Button>
 
-                    {currentQuestionIndex === questions.length - 1 && Object.keys(answers).length >= questions.filter(q => q.required).length && (
-                      <Button
-                        onClick={completeCheckIn}
-                        disabled={isProcessing}
-                        className="ml-auto"
-                      >
-                        Complete Check-In
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                       <Button
+                         variant="outline"
+                         onClick={skipToNext}
+                         disabled={isProcessing}
+                       >
+                         <SkipForward className="w-4 h-4 mr-1" />
+                         Skip Question
+                       </Button>
+
+                       {currentQuestionIndex === questions.length - 1 && Object.keys(answers).length >= questions.filter(q => q.required).length && (
+                         <Button
+                           onClick={completeCheckIn}
+                           disabled={isProcessing}
+                           className="ml-auto"
+                         >
+                           Complete Check-In
+                           <ArrowRight className="w-4 h-4 ml-2" />
+                         </Button>
+                       )}
+                     </div>
+                   )}
+                 </div>
               </CardContent>
             </Card>
 
