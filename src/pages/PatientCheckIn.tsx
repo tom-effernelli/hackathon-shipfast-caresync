@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import QRCode from "qrcode";
+import { addPatient } from "@/lib/supabase-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,8 +86,20 @@ const PatientCheckIn = () => {
       const qrCode = await generateQRCode(data);
       const patientId = generatePatientId();
       
-      // Simulate storing patient data (replace with actual Supabase call)
-      console.log('Patient data to store:', data);
+      // Store patient data in Supabase
+      await addPatient({
+        name: data.fullName,
+        age: data.age,
+        medical_history: [
+          data.chronicConditions,
+          data.currentMedications,
+          data.allergies,
+          data.pastSurgeries
+        ].filter(Boolean).join('; '),
+        workflow_status: 'self_checkin'
+      });
+      
+      console.log('Patient data stored in Supabase:', data);
       
       setCheckInResult({
         patientId,

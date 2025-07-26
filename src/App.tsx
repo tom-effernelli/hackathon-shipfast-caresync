@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import PatientCheckIn from "./pages/PatientCheckIn";
+import PatientManagement from "./pages/PatientManagement";
 import Triage from "./pages/Triage";
 import TriageWorkflow from "./pages/TriageWorkflow";
 import { Navigation } from "@/components/Navigation";
@@ -22,6 +23,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/patient-checkin" element={<PatientCheckIn />} />
+          <Route path="/patient-management" element={<PatientManagement />} />
           <Route path="/triage" element={<Triage />} />
           <Route path="/triage-workflow" element={<TriageWorkflow />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

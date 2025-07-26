@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { fetchPatients, updatePatientStatus, type Patient as SupabasePatient } from "@/lib/supabase-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,89 +35,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-interface Patient {
-  id: string;
-  name: string;
-  age: number;
-  gender: string;
-  status: 'checked-in' | 'assessed' | 'in-treatment';
-  chiefComplaint: string;
-  checkInTime: string;
+interface Patient extends SupabasePatient {
+  status?: 'checked-in' | 'assessed' | 'in-treatment';
+  chiefComplaint?: string;
+  checkInTime?: string;
   assessmentTime?: string;
   treatmentStartTime?: string;
-  urgencyLevel?: 'critical' | 'high' | 'moderate' | 'low';
   triageCategory?: string;
-  estimatedWaitTime?: string;
-  estimatedTreatmentDuration?: string;
   assignedDoctor?: string;
   treatmentProgress?: number;
 }
 
-// Mock data representing patients in different stages
-const mockPatients: Patient[] = [
-  {
-    id: 'pt-001',
-    name: 'John Smith',
-    age: 45,
-    gender: 'Male',
-    status: 'checked-in',
-    chiefComplaint: 'Chest pain radiating to left arm',
-    checkInTime: '2024-01-25T14:30:00Z',
-  },
-  {
-    id: 'pt-002',
-    name: 'Maria Garcia',
-    age: 28,
-    gender: 'Female',
-    status: 'checked-in',
-    chiefComplaint: 'Severe abdominal pain in lower right quadrant',
-    checkInTime: '2024-01-25T15:15:00Z',
-  },
-  {
-    id: 'pt-003',
-    name: 'Robert Johnson',
-    age: 67,
-    gender: 'Male',
-    status: 'assessed',
-    chiefComplaint: 'Shortness of breath and dizziness',
-    checkInTime: '2024-01-25T13:45:00Z',
-    assessmentTime: '2024-01-25T14:15:00Z',
-    urgencyLevel: 'critical',
-    triageCategory: 'ESI Level 1',
-    estimatedWaitTime: 'Immediate',
-    assignedDoctor: 'Dr. Sarah Williams',
-  },
-  {
-    id: 'pt-004',
-    name: 'Lisa Chen',
-    age: 34,
-    gender: 'Female',
-    status: 'assessed',
-    chiefComplaint: 'Migraine with visual disturbances',
-    checkInTime: '2024-01-25T13:00:00Z',
-    assessmentTime: '2024-01-25T13:45:00Z',
-    urgencyLevel: 'moderate',
-    triageCategory: 'ESI Level 3',
-    estimatedWaitTime: '45 minutes',
-    assignedDoctor: 'Dr. Michael Brown',
-  },
-  {
-    id: 'pt-005',
-    name: 'David Wilson',
-    age: 52,
-    gender: 'Male',
-    status: 'in-treatment',
-    chiefComplaint: 'Suspected heart attack',
-    checkInTime: '2024-01-25T12:30:00Z',
-    assessmentTime: '2024-01-25T12:45:00Z',
-    treatmentStartTime: '2024-01-25T13:00:00Z',
-    urgencyLevel: 'critical',
-    triageCategory: 'ESI Level 1',
-    assignedDoctor: 'Dr. Emily Davis',
-    estimatedTreatmentDuration: '3-4 hours',
-    treatmentProgress: 65,
-  },
-];
 
 const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: boolean }) => {
   const {
@@ -186,7 +115,7 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
       </CardHeader>
       <CardContent className="pt-0 space-y-3">
         <p className="text-xs text-muted-foreground line-clamp-2">
-          {patient.chiefComplaint}
+          {patient.chiefComplaint || patient.medical_history || 'Medical consultation'}
         </p>
 
         {patient.status === 'checked-in' && (
@@ -205,12 +134,12 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
         {patient.status === 'assessed' && (
           <>
             <div className="space-y-2">
-              <Badge variant={getUrgencyColor(patient.urgencyLevel || 'low')} className="text-xs">
+              <Badge variant={getUrgencyColor(patient.urgency_level || 'low')} className="text-xs">
                 <AlertTriangle className="w-3 h-3 mr-1" />
                 {patient.triageCategory}
               </Badge>
               <div className="text-sm font-medium text-primary">
-                Wait Time: {patient.estimatedWaitTime}
+                Wait Time: {patient.estimated_wait_time ? `${patient.estimated_wait_time} min` : 'TBD'}
               </div>
               {patient.assignedDoctor && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -230,7 +159,7 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
             </Badge>
             <div className="space-y-2">
               <div className="text-sm font-medium text-success">
-                Duration: {patient.estimatedTreatmentDuration}
+                Duration: {patient.estimated_treatment_duration ? `${patient.estimated_treatment_duration} min` : 'TBD'}
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Stethoscope className="w-3 h-3" />
@@ -304,9 +233,36 @@ const Column = ({
 };
 
 const TriageWorkflow = () => {
-  const [patients, setPatients] = useState<Patient[]>(mockPatients);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadPatients();
+  }, []);
+
+  const loadPatients = async () => {
+    try {
+      const supabasePatients = await fetchPatients();
+      
+      // Transform Supabase patients to workflow format
+      const workflowPatients: Patient[] = supabasePatients.map(p => ({
+        ...p,
+        status: p.workflow_status === 'self_checkin' ? 'checked-in' : 
+               p.workflow_status === 'clinical_assessment' ? 'assessed' : 'in-treatment',
+        chiefComplaint: p.medical_history || 'Medical consultation',
+        checkInTime: p.created_at,
+        estimatedWaitTime: p.estimated_wait_time ? `${p.estimated_wait_time} minutes` : undefined,
+        estimatedTreatmentDuration: p.estimated_treatment_duration ? `${p.estimated_treatment_duration} minutes` : undefined,
+        assignedDoctor: p.assigned_doctor
+      }));
+      
+      setPatients(workflowPatients);
+    } catch (error) {
+      console.error('Error loading patients:', error);
+      toast.error('Failed to load patient data');
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -318,7 +274,7 @@ const TriageWorkflow = () => {
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.chiefComplaint.toLowerCase().includes(searchQuery.toLowerCase())
+    (patient.chiefComplaint || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const checkedInPatients = filteredPatients.filter(p => p.status === 'checked-in');
@@ -329,7 +285,7 @@ const TriageWorkflow = () => {
     setActiveId(event.active.id as string);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     
     if (!over) {
@@ -355,31 +311,22 @@ const TriageWorkflow = () => {
 
     // Update patient status if it changed
     if (newStatus !== activePatient.status) {
-      setPatients(prevPatients => 
-        prevPatients.map(patient => {
-          if (patient.id === activeId) {
-            const updatedPatient = { ...patient, status: newStatus };
-            
-            // Add timestamps and additional data based on new status
-            if (newStatus === 'assessed' && !patient.assessmentTime) {
-              updatedPatient.assessmentTime = new Date().toISOString();
-              updatedPatient.urgencyLevel = 'moderate';
-              updatedPatient.triageCategory = 'ESI Level 3';
-              updatedPatient.estimatedWaitTime = '30 minutes';
-              updatedPatient.assignedDoctor = 'Dr. Available';
-            } else if (newStatus === 'in-treatment' && !patient.treatmentStartTime) {
-              updatedPatient.treatmentStartTime = new Date().toISOString();
-              updatedPatient.estimatedTreatmentDuration = '1-2 hours';
-              updatedPatient.treatmentProgress = 25;
-            }
-            
-            return updatedPatient;
-          }
-          return patient;
-        })
-      );
-
-      toast.success(`${activePatient.name} moved to ${newStatus.replace('-', ' ')} stage`);
+      try {
+        // Map workflow status back to Supabase status
+        const supabaseStatus = newStatus === 'checked-in' ? 'self_checkin' :
+                              newStatus === 'assessed' ? 'clinical_assessment' : 'in_treatment';
+        
+        // Update in Supabase
+        await updatePatientStatus(activeId, supabaseStatus);
+        
+        // Reload patients to reflect changes
+        await loadPatients();
+        
+        toast.success(`${activePatient.name} moved to ${newStatus.replace('-', ' ')} stage`);
+      } catch (error) {
+        console.error('Error updating patient status:', error);
+        toast.error('Failed to update patient status');
+      }
     }
 
     setActiveId(null);

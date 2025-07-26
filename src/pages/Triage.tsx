@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { fetchPatients, updatePatientStatus } from "@/lib/supabase-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,42 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Search, Activity, User, Heart, Phone, FileText, Camera, CheckCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
-
-// Mock data for patients who completed self-check-in
-const mockCheckInPatients = [
-  {
-    patientId: "PT-1737915234567-A1B2",
-    fullName: "John Smith",
-    age: 45,
-    gender: "Male",
-    phone: "555-0123",
-    emergencyContactName: "Jane Smith",
-    emergencyContactPhone: "555-0124",
-    emergencyContactRelation: "Spouse",
-    currentMedications: "Lisinopril 10mg daily, Metformin 500mg twice daily",
-    allergies: "Penicillin, Peanuts",
-    chronicConditions: "Type 2 Diabetes, Hypertension",
-    pastSurgeries: "Appendectomy (2015)",
-    chiefComplaint: "Chest pain that started 2 hours ago, radiating to left arm",
-    checkInTime: "2024-01-25T14:30:00Z"
-  },
-  {
-    patientId: "PT-1737915234568-C3D4",
-    fullName: "Maria Garcia",
-    age: 28,
-    gender: "Female",
-    phone: "555-0234",
-    emergencyContactName: "Carlos Garcia",
-    emergencyContactPhone: "555-0235",
-    emergencyContactRelation: "Husband",
-    currentMedications: "None",
-    allergies: "None known",
-    chronicConditions: "None",
-    pastSurgeries: "None",
-    chiefComplaint: "Severe abdominal pain in lower right quadrant for the past 6 hours",
-    checkInTime: "2024-01-25T15:15:00Z"
-  }
-];
 
 const clinicalAssessmentSchema = z.object({
   currentSymptoms: z.string().min(10, "Please describe current symptoms"),
@@ -63,9 +28,10 @@ const clinicalAssessmentSchema = z.object({
 type ClinicalAssessment = z.infer<typeof clinicalAssessmentSchema>;
 
 const Triage = () => {
-  const [selectedPatient, setSelectedPatient] = useState<typeof mockCheckInPatients[0] | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filteredPatients, setFilteredPatients] = useState(mockCheckInPatients);
+  const [checkInPatients, setCheckInPatients] = useState<any[]>([]);
+  const [filteredPatients, setFilteredPatients] = useState<any[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
 
@@ -74,12 +40,27 @@ const Triage = () => {
   });
 
   useEffect(() => {
-    const filtered = mockCheckInPatients.filter(patient => 
-      patient.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.patientId.toLowerCase().includes(searchQuery.toLowerCase())
+    loadCheckInPatients();
+  }, []);
+
+  useEffect(() => {
+    const filtered = checkInPatients.filter(patient => 
+      patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      patient.id.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredPatients(filtered);
-  }, [searchQuery]);
+  }, [searchQuery, checkInPatients]);
+
+  const loadCheckInPatients = async () => {
+    try {
+      const patients = await fetchPatients();
+      const selfCheckInPatients = patients.filter(p => p.workflow_status === 'self_checkin');
+      setCheckInPatients(selfCheckInPatients);
+    } catch (error) {
+      console.error('Error loading patients:', error);
+      toast.error('Failed to load patient data');
+    }
+  };
 
   const onSubmit = async (data: ClinicalAssessment) => {
     if (!selectedPatient) {
@@ -98,7 +79,7 @@ const Triage = () => {
       // Mock AI analysis result
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      setAnalysisResult({
+      const result = {
         urgencyLevel: "HIGH",
         triageCategory: "ESI Level 2",
         estimatedWaitTime: "15 minutes",
@@ -112,9 +93,23 @@ const Triage = () => {
           "Cardiology consultation"
         ],
         confidence: 92
-      });
+      };
+      
+      setAnalysisResult(result);
 
-      toast.success("Triage analysis complete");
+      // Update patient status in Supabase
+      if (selectedPatient) {
+        await updatePatientStatus(selectedPatient.id, 'clinical_assessment', {
+          urgency_level: result.urgencyLevel.toLowerCase() as any,
+          estimated_wait_time: 15,
+          estimated_treatment_duration: 180 // 3 hours in minutes
+        });
+        
+        // Refresh patient list
+        await loadCheckInPatients();
+      }
+
+      toast.success("Triage analysis complete and saved!");
     } catch (error) {
       toast.error("Analysis failed. Please try again.");
     } finally {
@@ -122,7 +117,7 @@ const Triage = () => {
     }
   };
 
-  const handlePatientSelect = (patient: typeof mockCheckInPatients[0]) => {
+  const handlePatientSelect = (patient: any) => {
     setSelectedPatient(patient);
     setSearchQuery("");
     reset();
@@ -166,15 +161,15 @@ const Triage = () => {
                 <div className="border rounded-lg bg-background shadow-lg max-h-48 overflow-y-auto">
                   {filteredPatients.map((patient) => (
                     <div
-                      key={patient.patientId}
+                      key={patient.id}
                       className="p-3 hover:bg-accent cursor-pointer border-b last:border-b-0"
                       onClick={() => handlePatientSelect(patient)}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{patient.fullName}</p>
+                          <p className="font-medium">{patient.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            ID: {patient.patientId} • Age: {patient.age} • {patient.gender}
+                            ID: {patient.id} • Age: {patient.age}
                           </p>
                         </div>
                         <Badge variant="secondary">
@@ -208,32 +203,21 @@ const Triage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <Label className="text-sm font-medium text-muted-foreground">Full Name</Label>
-                    <p className="font-medium">{selectedPatient.fullName}</p>
+                    <p className="font-medium">{selectedPatient.name}</p>
                   </div>
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <Label className="text-sm font-medium text-muted-foreground">Age</Label>
                     <p className="font-medium">{selectedPatient.age}</p>
                   </div>
                   <div className="bg-muted/50 p-3 rounded-lg">
-                    <Label className="text-sm font-medium text-muted-foreground">Gender</Label>
-                    <p className="font-medium">{selectedPatient.gender}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-muted/50 p-3 rounded-lg">
-                    <Label className="text-sm font-medium text-muted-foreground">Current Medications</Label>
-                    <p className="text-sm">{selectedPatient.currentMedications || "None reported"}</p>
-                  </div>
-                  <div className="bg-muted/50 p-3 rounded-lg">
-                    <Label className="text-sm font-medium text-muted-foreground">Known Allergies</Label>
-                    <p className="text-sm">{selectedPatient.allergies || "None reported"}</p>
+                    <Label className="text-sm font-medium text-muted-foreground">Medical History</Label>
+                    <p className="font-medium">{selectedPatient.medical_history || 'None reported'}</p>
                   </div>
                 </div>
 
                 <div className="bg-muted/50 p-3 rounded-lg">
-                  <Label className="text-sm font-medium text-muted-foreground">Chief Complaint</Label>
-                  <p className="text-sm">{selectedPatient.chiefComplaint}</p>
+                  <Label className="text-sm font-medium text-muted-foreground">Patient Status</Label>
+                  <p className="text-sm">Check-in completed at {new Date(selectedPatient.created_at).toLocaleString()}</p>
                 </div>
               </CardContent>
             </Card>
