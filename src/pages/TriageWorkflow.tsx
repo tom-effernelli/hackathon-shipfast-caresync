@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -134,23 +134,51 @@ const PatientCard = ({
       return `Treatment: ${progressData.timeElapsed}/${estimatedDuration} min (${progressData.percentage}%)`;
     }
   };
+  const [dragStarted, setDragStarted] = useState(false);
+  const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setDragStarted(false);
+    dragTimeoutRef.current = setTimeout(() => {
+      setDragStarted(true);
+    }, 150);
+  };
+
   const handleCardClick = (e: React.MouseEvent) => {
+    if (dragStarted || isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+    }
+    
     if (onCardClick) {
       e.stopPropagation();
       onCardClick(patient);
-      return;
     }
   };
 
-  const cardProps = onCardClick 
-    ? { onClick: handleCardClick }
-    : { ...attributes, ...listeners };
+  const handlePointerUp = () => {
+    if (dragTimeoutRef.current) {
+      clearTimeout(dragTimeoutRef.current);
+    }
+    setTimeout(() => {
+      setDragStarted(false);
+    }, 100);
+  };
 
   return <Card 
     ref={setNodeRef} 
     style={style} 
-    {...cardProps}
-    className={`${onCardClick ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary' : ''}`}
+    onPointerDown={handlePointerDown}
+    onPointerUp={handlePointerUp}
+    onClick={handleCardClick}
+    {...attributes}
+    {...listeners}
+    className={`${isDragging ? 'cursor-grabbing' : 'cursor-grab'} hover:shadow-md transition-all touch-none ${isDragging ? 'ring-2 ring-primary' : ''}`}
   >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
