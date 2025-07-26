@@ -199,26 +199,16 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
   };
 
   const playPositiveFeedback = () => {
-    const phrases = [
-      "Perfect, thank you!",
-      "Great, moving on!",
-      "Excellent!",
-      "Got it, next question!",
-      "Thank you!"
-    ];
-    const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
-    const utterance = new SpeechSynthesisUtterance(randomPhrase);
-    utterance.rate = 1.1;
-    utterance.volume = 0.7;
-    speechSynthesis.speak(utterance);
+    // Audio feedback removed for faster demo flow
+    // Keep only visual feedback via toasts and messages
   };
 
   const handleConfirmAnswer = async () => {
     if (currentTranscript.trim()) {
       let finalAnswer = currentTranscript.trim();
       
-      // Play positive feedback immediately
-      playPositiveFeedback();
+      // Visual feedback only - no audio to speed up demo
+      // playPositiveFeedback(); // Removed for faster flow
       
       // Special handling for gender field with Claude API
       if (currentQuestion.field === 'gender') {

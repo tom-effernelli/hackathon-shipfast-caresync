@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import PatientCheckIn from "./pages/PatientCheckIn";
 import Triage from "./pages/Triage";
 import TriageWorkflow from "./pages/TriageWorkflow";
+import Statistics from "./pages/Statistics";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AdminProvider } from "@/hooks/useAdminContext";
 import { Heart } from "lucide-react";
@@ -37,6 +38,7 @@ const App = () => (
                     <Route path="/" element={<TriageWorkflow />} />
                     <Route path="/patient-checkin" element={<PatientCheckIn />} />
                     <Route path="/triage" element={<Triage />} />
+                    <Route path="/statistics" element={<Statistics />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </div>

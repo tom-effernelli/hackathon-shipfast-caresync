@@ -71,39 +71,38 @@ const Triage = () => {
 
     setIsAnalyzing(true);
     try {
-      // Simulate AI analysis combining self-check-in data with clinical assessment
-      const combinedData = {
+      console.log('Starting triage analysis with data:', {
         patientInfo: selectedPatient,
         clinicalAssessment: data,
-      };
+      });
 
-      // Mock AI analysis result
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Use the actual performTriageAnalysis function from api.ts
+      const { performTriageAnalysis } = await import("@/lib/api");
       
-      const result = {
-        urgencyLevel: "HIGH",
-        triageCategory: "ESI Level 2",
-        estimatedWaitTime: "15 minutes",
-        treatmentDuration: "2-4 hours",
-        redFlags: ["Chest pain with cardiac risk factors", "Age > 40"],
-        recommendations: [
-          "Immediate ECG",
-          "Cardiac enzymes (troponin)",
-          "Chest X-ray",
-          "IV access and oxygen",
-          "Cardiology consultation"
-        ],
-        confidence: 92
+      const result = await performTriageAnalysis(selectedPatient, data);
+      
+      console.log('Triage analysis result:', result);
+      
+      // Transform result to match expected format
+      const transformedResult = {
+        urgencyLevel: result.urgency_level.toUpperCase(),
+        triageCategory: `ESI Level ${result.urgency_level === 'critical' ? '1' : result.urgency_level === 'high' ? '2' : result.urgency_level === 'moderate' ? '3' : '4'}`,
+        estimatedWaitTime: `${result.estimated_wait_time} minutes`,
+        treatmentDuration: `${Math.floor(result.estimated_treatment_duration / 60)} hours`,
+        redFlags: result.red_flags,
+        recommendations: result.recommendations,
+        confidence: Math.round(result.confidence_score * 100),
+        reasoning: result.reasoning
       };
       
-      setAnalysisResult(result);
+      setAnalysisResult(transformedResult);
 
       // Update patient status in Supabase
       if (selectedPatient) {
         await updatePatientStatus(selectedPatient.id, 'clinical_assessment', {
-          urgency_level: result.urgencyLevel.toLowerCase() as any,
-          estimated_wait_time: 15,
-          estimated_treatment_duration: 180 // 3 hours in minutes
+          urgency_level: result.urgency_level.toLowerCase() as any,
+          estimated_wait_time: result.estimated_wait_time,
+          estimated_treatment_duration: result.estimated_treatment_duration
         });
         
         // Refresh patient list
