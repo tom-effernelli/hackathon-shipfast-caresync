@@ -19,7 +19,11 @@ import {
   Timer,
   Edit3,
   Check,
-  SkipForward
+  SkipForward,
+  MessageSquare,
+  AlertTriangle,
+  Square,
+  Circle
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -528,290 +532,421 @@ export const VoiceCheckIn = ({ isOpen, onClose, onComplete }: VoiceCheckInProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="text-2xl">Voice-Guided Check-In</DialogTitle>
-          <div className="flex items-center justify-between mt-4">
-            <Badge variant="outline" className="text-sm">
-              Question {currentQuestionIndex + 1} of {questions.length}
-            </Badge>
-            <Progress value={progress} className="flex-1 mx-4" />
-            <span className="text-sm text-muted-foreground">{Math.round(progress)}%</span>
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Video Feed */}
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                  {!hasVideoPermission && (
-                    <div className="absolute inset-0 flex items-center justify-center text-white bg-black/50">
-                      <div className="text-center">
-                        <VideoOff className="w-12 h-12 mx-auto mb-2" />
-                        <p>Camera access needed</p>
+      <DialogContent className="max-w-7xl h-[90vh] p-0 overflow-hidden border-0 bg-background/95 backdrop-blur-sm">
+        <div className="flex h-full rounded-lg overflow-hidden">
+          {/* Left side - Video and controls */}
+          <div className="flex-1 bg-gradient-to-br from-black via-gray-900 to-black relative flex flex-col">
+            {/* Video container */}
+            <div className="flex-1 relative overflow-hidden rounded-l-lg">
+              {videoEnabled && (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className={`w-full h-full object-cover transition-all duration-500 ${
+                    isRecording ? 'ring-4 ring-red-500/50 ring-offset-4 ring-offset-black' : ''
+                  }`}
+                />
+              )}
+              
+              {/* Animated background when video is off */}
+              {!videoEnabled && (
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-background/20">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.5)_100%)]"></div>
+                </div>
+              )}
+              
+              {/* Overlay content */}
+              <div className="absolute inset-0 flex flex-col">
+                {/* Top overlay with glass effect */}
+                <div className="bg-gradient-to-b from-black/60 via-black/30 to-transparent p-6 backdrop-blur-sm">
+                  <div className="flex items-center justify-between text-white">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <Mic className="h-6 w-6" />
+                        {isRecording && (
+                          <div className="absolute -inset-1 rounded-full bg-red-500/30 animate-ping"></div>
+                        )}
                       </div>
+                      <div>
+                        <span className="text-lg font-semibold">Voice Check-in</span>
+                        <p className="text-sm text-white/70">AI-Powered Patient Intake</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleVideo}
+                        className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/10"
+                      >
+                        {videoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onClose}
+                        className="text-white hover:bg-white/20 backdrop-blur-sm border border-white/10"
+                      >
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Center overlay for status messages */}
+                <div className="flex-1 flex items-center justify-center">
+                  {!hasVideoPermission && !hasAudioPermission && (
+                    <div className="text-center text-white animate-fade-in">
+                      <div className="relative mb-6">
+                        <Camera className="h-20 w-20 mx-auto opacity-60" />
+                        <div className="absolute inset-0 animate-pulse">
+                          <Camera className="h-20 w-20 mx-auto opacity-20" />
+                        </div>
+                      </div>
+                      <p className="text-xl font-medium mb-2">Setting up your experience</p>
+                      <p className="text-white/70">Accessing camera and microphone...</p>
                     </div>
                   )}
                   
-                  {/* Recording indicator */}
-                  {isRecording && (
-                    <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-500 text-white px-3 py-1 rounded-full">
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                      <span className="text-sm font-medium">Recording</span>
+                  {!hasVideoPermission && hasAudioPermission && (
+                    <div className="text-center text-white animate-fade-in">
+                      <AlertCircle className="h-20 w-20 mx-auto mb-6 text-red-400" />
+                      <p className="text-xl font-medium mb-2">Camera Access Required</p>
+                      <p className="text-white/70 max-w-sm">Please allow camera access for the best experience</p>
                     </div>
                   )}
 
-                  {/* Processing indicator */}
                   {isProcessing && (
-                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-blue-500 text-white px-3 py-1 rounded-full">
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-                      <span className="text-sm font-medium">Processing</span>
+                    <div className="text-center text-white animate-fade-in">
+                      <div className="relative mb-6">
+                        <div className="animate-spin rounded-full h-20 w-20 border-4 border-white/20 border-t-white mx-auto"></div>
+                        <div className="absolute inset-0 rounded-full bg-white/5 animate-pulse"></div>
+                      </div>
+                      <p className="text-xl font-medium mb-2">Processing your response</p>
+                      <p className="text-white/70">Our AI is analyzing your answer...</p>
+                    </div>
+                  )}
+
+                  {validationState === 'validating' && (
+                    <div className="text-center text-white animate-fade-in">
+                      <div className="relative mb-6">
+                        <div className="animate-pulse h-20 w-20 bg-primary/30 rounded-full mx-auto flex items-center justify-center backdrop-blur-sm border border-primary/50">
+                          <CheckCircle className="h-10 w-10 text-primary" />
+                        </div>
+                      </div>
+                      <p className="text-xl font-medium mb-2">Validating answer</p>
+                      <p className="text-white/70">Ensuring accuracy and completeness...</p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex justify-center gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={toggleVideo}
-                  >
-                    {videoEnabled ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4" />}
-                  </Button>
+                {/* Bottom overlay - Recording controls with enhanced design */}
+                <div className="bg-gradient-to-t from-black/80 via-black/50 to-transparent p-8 backdrop-blur-sm">
+                  <div className="flex items-center justify-center gap-6">
+                    {hasAudioPermission && !isProcessing && validationState !== 'validating' && (
+                      <>
+                        <Button
+                          onClick={isRecording ? stopRecording : startRecording}
+                          disabled={isProcessing || isPlaying || showConfirmation}
+                          size="lg"
+                          className={`
+                            rounded-full w-24 h-24 transition-all duration-300 transform hover:scale-105 border-4
+                            ${isRecording 
+                              ? 'bg-red-500 hover:bg-red-600 border-red-300 animate-pulse shadow-lg shadow-red-500/50' 
+                              : 'bg-white text-black hover:bg-gray-100 border-white/20 shadow-lg shadow-white/20'
+                            }
+                          `}
+                        >
+                          {isRecording ? (
+                            <Square className="h-10 w-10" />
+                          ) : (
+                            <Mic className="h-10 w-10" />
+                          )}
+                        </Button>
+                        
+                        {isRecording && (
+                          <div className="flex items-center gap-4 text-white animate-fade-in">
+                            <div className="flex gap-1 items-end">
+                              {[...Array(8)].map((_, i) => (
+                                <div
+                                  key={i}
+                                  className="w-1.5 bg-gradient-to-t from-white to-white/60 rounded-full transition-all duration-75"
+                                  style={{
+                                    height: `${8 + Math.random() * 24}px`,
+                                    animationDelay: `${i * 50}ms`
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            <div>
+                              <span className="text-lg font-medium">Recording</span>
+                              <p className="text-sm text-white/70">Speak clearly and naturally</p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
-          {/* Question and Controls */}
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-xl font-semibold mb-4">Current Question</h3>
-                <p className="text-lg mb-6">{currentQuestion?.text}</p>
-                
-                 {/* Validation State Display */}
-                 {validationState !== 'none' && (
-                   <div className={`rounded-lg p-4 mb-4 ${
-                     validationState === 'validating' ? 'bg-blue-50 border border-blue-200' :
-                     validationState === 'valid' ? 'bg-green-50 border border-green-200' :
-                     'bg-red-50 border border-red-200'
-                   }`}>
-                     <div className="flex items-center gap-2 mb-2">
-                       {validationState === 'validating' && (
-                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-                       )}
-                       {validationState === 'valid' && autoAdvanceCountdown > 0 && (
-                         <div className="flex items-center gap-1 text-green-600">
-                           <CheckCircle className="w-4 h-4" />
-                           <span className="text-sm font-medium">Auto-advancing in {autoAdvanceCountdown}s</span>
-                         </div>
-                       )}
-                       {validationState === 'invalid' && (
-                         <AlertCircle className="w-4 h-4 text-red-600" />
-                       )}
-                     </div>
-                     <p className={`text-sm font-medium ${
-                       validationState === 'validating' ? 'text-blue-900' :
-                       validationState === 'valid' ? 'text-green-900' :
-                       'text-red-900'
-                     }`}>
-                       {validationMessage}
-                     </p>
-                     {currentTranscript && validationState !== 'validating' && (
-                       <p className={`mt-2 ${
-                         validationState === 'valid' ? 'text-green-800' : 'text-red-800'
-                       }`}>
-                         "{currentTranscript}"
-                       </p>
-                     )}
-                   </div>
-                 )}
+          {/* Right side - Questions and progress with enhanced design */}
+          <div className="w-[28rem] border-l border-border/50 bg-gradient-to-br from-background to-muted/20 flex flex-col">
+            {/* Enhanced Header */}
+            <div className="p-6 border-b border-border/50 bg-gradient-to-r from-primary/5 via-primary/3 to-transparent">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Patient Check-in</h2>
+                  <p className="text-sm text-muted-foreground">Complete your medical intake</p>
+                </div>
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1">
+                  {currentQuestionIndex + 1} of {questions.length}
+                </Badge>
+              </div>
+              
+              {/* Enhanced Progress bar */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="font-medium text-foreground">
+                    {Math.round(progress)}%
+                  </span>
+                </div>
+                <Progress 
+                  value={progress} 
+                  className="h-3 bg-muted border border-border/50"
+                />
+              </div>
+            </div>
 
-                 {currentTranscript && validationState === 'none' && (
-                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                     <div className="flex items-center justify-between mb-2">
-                       <p className="text-sm font-medium text-blue-900">Your answer:</p>
-                       {confidence > 0 && (
-                         <div className="flex items-center gap-2">
-                           <div className={`w-2 h-2 rounded-full ${
-                             confidence >= 80 ? 'bg-green-500' : 
-                             confidence >= 50 ? 'bg-orange-500' : 'bg-red-500'
-                           }`} />
-                           <span className={`text-xs font-medium ${
-                             confidence >= 80 ? 'text-green-700' : 
-                             confidence >= 50 ? 'text-orange-700' : 'text-red-700'
-                           }`}>
-                             {confidence >= 80 ? 'High confidence' : 
-                              confidence >= 50 ? 'Medium confidence' : 'Low confidence'}
-                           </span>
-                           <span className="text-xs text-gray-600">({Math.round(confidence)}%)</span>
-                         </div>
-                       )}
-                     </div>
-                     <p className="text-blue-800">{currentTranscript}</p>
-                   </div>
-                 )}
+            {/* Current Question with enhanced styling */}
+            <div className="flex-1 p-6 overflow-y-auto">
+              {hasAudioPermission && (
+                <div className="space-y-6">
+                  {/* Enhanced Question card */}
+                  <Card className="border-primary/20 bg-gradient-to-br from-background via-primary/2 to-primary/5 shadow-lg shadow-primary/5 animate-fade-in">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center flex-shrink-0 shadow-lg">
+                          <span className="text-sm font-bold text-primary-foreground">
+                            {currentQuestionIndex + 1}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground mb-3 leading-relaxed">
+                            {currentQuestion?.text}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            {currentQuestion?.required && (
+                              <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                Required
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {currentQuestion?.type}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                 {/* Confirmation Interface */}
-                 {showConfirmation && currentTranscript && (
-                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                     <div className="flex items-center justify-between mb-3">
-                       <p className="text-sm font-medium text-green-900">Is this correct?</p>
-                       <div className="flex items-center gap-1 text-orange-600">
-                         <Timer className="w-4 h-4" />
-                         <span className="text-sm">{timeRemaining}s</span>
-                       </div>
-                     </div>
-                     <p className="text-green-800 mb-3">"{currentTranscript}"</p>
-                     <div className="flex gap-2">
-                       <Button
-                         onClick={confirmAnswer}
-                         size="sm"
-                         className="bg-green-600 hover:bg-green-700"
-                       >
-                         <Check className="w-4 h-4 mr-1" />
-                         Confirm
-                       </Button>
-                       <Button
-                         onClick={retryAnswer}
-                         variant="outline"
-                         size="sm"
-                       >
-                         <RotateCcw className="w-4 h-4 mr-1" />
-                         Retry
-                       </Button>
-                       <Button
-                         onClick={skipToNext}
-                         variant="outline"
-                         size="sm"
-                       >
-                         <SkipForward className="w-4 h-4 mr-1" />
-                         Skip
-                       </Button>
-                     </div>
-                   </div>
-                 )}
+                  {/* Enhanced Current answer display */}
+                  {currentTranscript && validationState === 'none' && (
+                    <Card className="border-border/50 bg-muted/30 animate-fade-in">
+                      <CardContent className="p-5">
+                        <div className="flex items-start gap-3">
+                          <MessageSquare className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-sm font-medium text-foreground">Your response:</p>
+                              {confidence > 0 && (
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    confidence >= 80 ? 'bg-green-500' : 
+                                    confidence >= 50 ? 'bg-orange-500' : 'bg-red-500'
+                                  }`} />
+                                  <span className={`text-xs font-medium ${
+                                    confidence >= 80 ? 'text-green-700' : 
+                                    confidence >= 50 ? 'text-orange-700' : 'text-red-700'
+                                  }`}>
+                                    {confidence >= 80 ? 'High confidence' : 
+                                     confidence >= 50 ? 'Medium confidence' : 'Low confidence'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground leading-relaxed bg-background/50 p-3 rounded-md border border-border/30">
+                              "{currentTranscript}"
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
-                 <div className="space-y-3">
-                    {/* Recording Controls */}
-                    <div className="flex gap-2">
+                  {/* Enhanced Validation result */}
+                  {validationState !== 'none' && validationState !== 'validating' && validationMessage && (
+                    <Card className={`border-2 transition-all duration-500 animate-scale-in shadow-lg ${
+                      validationState === 'valid' 
+                        ? 'border-green-200 bg-gradient-to-br from-green-50 to-green-100/50 dark:border-green-800 dark:bg-gradient-to-br dark:from-green-950 dark:to-green-900/30' 
+                        : 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:border-yellow-800 dark:bg-gradient-to-br dark:from-yellow-950 dark:to-yellow-900/30'
+                    }`}>
+                      <CardContent className="p-5">
+                        <div className="flex items-start gap-3">
+                          <div className={`rounded-full p-1 ${
+                            validationState === 'valid' ? 'bg-green-500' : 'bg-yellow-500'
+                          }`}>
+                            {validationState === 'valid' ? (
+                              <CheckCircle className="h-5 w-5 text-white" />
+                            ) : (
+                              <AlertTriangle className="h-5 w-5 text-white" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm font-semibold mb-1 ${
+                              validationState === 'valid' 
+                                ? 'text-green-800 dark:text-green-200' 
+                                : 'text-yellow-800 dark:text-yellow-200'
+                            }`}>
+                              {validationState === 'valid' ? '✨ Perfect!' : '🤔 Let\'s clarify'}
+                            </p>
+                            <p className={`text-sm leading-relaxed ${
+                              validationState === 'valid' 
+                                ? 'text-green-700 dark:text-green-300' 
+                                : 'text-yellow-700 dark:text-yellow-300'
+                            }`}>
+                              {validationMessage}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Enhanced Confirmation Interface */}
+                  {showConfirmation && currentTranscript && (
+                    <Card className="border-green-200 bg-gradient-to-r from-green-50 to-green-100/50 dark:border-green-800 dark:bg-gradient-to-r dark:from-green-950 dark:to-green-900/30 animate-fade-in">
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-medium text-green-900 dark:text-green-200">Is this correct?</p>
+                          <div className="flex items-center gap-1 text-orange-600">
+                            <Timer className="w-4 h-4" />
+                            <span className="text-sm">{timeRemaining}s</span>
+                          </div>
+                        </div>
+                        <p className="text-green-800 dark:text-green-300 mb-3 bg-background/50 p-3 rounded-md">"{currentTranscript}"</p>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={confirmAnswer}
+                            size="sm"
+                            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg"
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Confirm
+                          </Button>
+                          <Button
+                            onClick={retryAnswer}
+                            variant="outline"
+                            size="sm"
+                            className="hover:bg-muted/50"
+                          >
+                            <RotateCcw className="w-4 h-4 mr-1" />
+                            Retry
+                          </Button>
+                          <Button
+                            onClick={skipToNext}
+                            variant="outline"
+                            size="sm"
+                            className="hover:bg-muted/50"
+                          >
+                            <SkipForward className="w-4 h-4 mr-1" />
+                            Skip
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Enhanced Action buttons */}
+                  {currentTranscript && validationState === 'none' && !showConfirmation && (
+                    <div className="flex gap-3 animate-fade-in">
                       <Button
-                        onClick={isRecording ? stopRecording : startRecording}
-                        disabled={isProcessing || isPlaying || showConfirmation}
-                        className={isRecording ? "bg-red-500 hover:bg-red-600" : ""}
-                        size="lg"
+                        onClick={handleConfirmAnswer}
+                        disabled={!currentTranscript.trim() || isProcessing}
+                        className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg shadow-green-600/25 transform transition-all duration-200 hover:scale-105"
                       >
-                        {isRecording ? (
-                          <>
-                            <MicOff className="w-5 h-5 mr-2" />
-                            Stop Recording
-                          </>
-                        ) : (
-                          <>
-                            <Mic className="w-5 h-5 mr-2" />
-                            Start Recording
-                          </>
-                        )}
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Confirm & Continue
                       </Button>
+                      <Button
+                        onClick={retryQuestion}
+                        variant="outline"
+                        className="border-muted-foreground/20 hover:bg-muted/50 transition-all duration-200"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
 
-                      {/* Manual Confirm Answer Button */}
-                      {currentTranscript && validationState === 'none' && (
-                        <Button
-                          onClick={handleConfirmAnswer}
-                          disabled={!currentTranscript.trim() || isProcessing || showConfirmation}
-                          className="bg-green-600 hover:bg-green-700"
-                          size="lg"
-                        >
-                          <Check className="w-5 h-5 mr-2" />
-                          Confirm Answer ✓
-                        </Button>
-                      )}
-
+                  {/* Enhanced Manual navigation */}
+                  {!showConfirmation && validationState === 'none' && (
+                    <div className="flex gap-2 pt-4">
                       <Button
                         variant="outline"
-                        onClick={retryQuestion}
-                        disabled={isProcessing || isRecording || showConfirmation}
+                        onClick={goToPreviousQuestion}
+                        disabled={currentQuestionIndex === 0 || isProcessing}
+                        className="text-sm hover:bg-muted/50"
                       >
-                        <RotateCcw className="w-4 h-4" />
+                        Previous
                       </Button>
-                    </div>
-
-                   {/* Manual Skip Option */}
-                   {!showConfirmation && (
-                     <div className="flex gap-2">
-                       <Button
-                         variant="outline"
-                         onClick={goToPreviousQuestion}
-                         disabled={currentQuestionIndex === 0 || isProcessing}
-                       >
-                         Previous
-                       </Button>
-
-                       <Button
-                         variant="outline"
-                         onClick={skipToNext}
-                         disabled={isProcessing}
-                       >
-                         <SkipForward className="w-4 h-4 mr-1" />
-                         Skip Question
-                       </Button>
-
-                       {currentQuestionIndex === questions.length - 1 && Object.keys(answers).length >= questions.filter(q => q.required).length && (
-                         <Button
-                           onClick={completeCheckIn}
-                           disabled={isProcessing}
-                           className="ml-auto"
-                         >
-                           Complete Check-In
-                           <ArrowRight className="w-4 h-4 ml-2" />
-                         </Button>
-                       )}
-                     </div>
-                   )}
-                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Progress Summary */}
-            <Card>
-              <CardContent className="p-4">
-                <h4 className="font-medium mb-3">Progress Summary</h4>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {questions.map((q, index) => (
-                    <div key={q.id} className="flex items-center gap-2 text-sm">
-                      {answers[q.field] ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      ) : index === currentQuestionIndex ? (
-                        <AlertCircle className="w-4 h-4 text-blue-500" />
-                      ) : (
-                        <div className="w-4 h-4 border rounded-full border-gray-300" />
+                      <Button
+                        variant="outline"
+                        onClick={skipToNext}
+                        disabled={isProcessing}
+                        className="text-sm hover:bg-muted/50"
+                      >
+                        <SkipForward className="w-4 h-4 mr-1" />
+                        Skip Question
+                      </Button>
+                      {currentQuestionIndex === questions.length - 1 && Object.keys(answers).length >= questions.filter(q => q.required).length && (
+                        <Button
+                          onClick={completeCheckIn}
+                          disabled={isProcessing}
+                          className="ml-auto bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary"
+                        >
+                          Complete Check-In
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
                       )}
-                      <span className={index === currentQuestionIndex ? "font-medium" : "text-muted-foreground"}>
-                        {q.text.slice(0, 50)}...
-                      </span>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              )}
+            </div>
 
-        <div className="p-6 pt-0 flex justify-between">
-          <Button variant="outline" onClick={onClose}>
-            <X className="w-4 h-4 mr-2" />
-            Exit Voice Check-In
-          </Button>
+            {/* Enhanced Progress summary */}
+            <div className="border-t border-border/50 p-5 bg-gradient-to-r from-muted/20 to-muted/10">
+              <h4 className="text-sm font-medium text-foreground mb-3">Completed Questions</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {questions.slice(0, currentQuestionIndex).map((question, index) => (
+                  <div 
+                    key={question.id} 
+                    className="flex items-center gap-3 text-xs transition-all duration-200 opacity-70 hover:opacity-100 p-2 rounded-md hover:bg-background/50"
+                  >
+                    <div className="rounded-full p-0.5 bg-green-500">
+                      <CheckCircle className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="truncate flex-1 text-muted-foreground">{question.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
