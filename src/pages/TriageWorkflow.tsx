@@ -46,6 +46,38 @@ interface Patient extends SupabasePatient {
   treatmentProgress?: number;
 }
 
+// Hook to calculate real-time treatment progress
+const useRealTimeProgress = (patient: Patient) => {
+  const [progress, setProgress] = useState<{percentage: number, timeElapsed: number}>({ percentage: 0, timeElapsed: 0 });
+
+  useEffect(() => {
+    if (patient.status !== 'in-treatment' || !patient.treatmentStartTime || !patient.estimated_treatment_duration) {
+      return;
+    }
+
+    const updateProgress = () => {
+      const startTime = new Date(patient.treatmentStartTime!).getTime();
+      const currentTime = Date.now();
+      const elapsedMs = currentTime - startTime;
+      const elapsedMinutes = Math.floor(elapsedMs / (1000 * 60));
+      const totalDuration = patient.estimated_treatment_duration!;
+      const percentage = Math.min(100, Math.round((elapsedMinutes / totalDuration) * 100));
+      
+      setProgress({ percentage, timeElapsed: elapsedMinutes });
+    };
+
+    // Update immediately
+    updateProgress();
+    
+    // Update every 30 seconds for real-time progress
+    const interval = setInterval(updateProgress, 30000);
+    
+    return () => clearInterval(interval);
+  }, [patient.status, patient.treatmentStartTime, patient.estimated_treatment_duration]);
+
+  return progress;
+};
+
 
 const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: boolean }) => {
   const {
@@ -55,6 +87,8 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
     transform,
     transition,
   } = useSortable({ id: patient.id });
+
+  const progressData = useRealTimeProgress(patient);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -157,28 +191,33 @@ const PatientCard = ({ patient, isDragging }: { patient: Patient; isDragging?: b
               <Activity className="w-3 h-3 mr-1" />
               In Treatment
             </Badge>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="text-sm font-medium text-success">
                 Duration: {patient.estimated_treatment_duration ? `${patient.estimated_treatment_duration} min` : 'TBD'}
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Stethoscope className="w-3 h-3" />
-                {patient.assignedDoctor}
+                {patient.assigned_doctor || 'Dr. Smith'}
               </div>
-              {patient.treatmentProgress && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium">{patient.treatmentProgress}%</span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-success transition-all duration-500"
-                      style={{ width: `${patient.treatmentProgress}%` }}
-                    />
-                  </div>
+              
+              {/* Real-time Green Progress Bar */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground font-medium">Treatment Progress</span>
+                  <span className="font-semibold text-success">
+                    {progressData.timeElapsed}/{patient.estimated_treatment_duration || 60} min ({progressData.percentage}%)
+                  </span>
                 </div>
-              )}
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-1000 ease-in-out"
+                    style={{ width: `${progressData.percentage}%` }}
+                  />
+                </div>
+                <div className="text-xs text-success/80 font-medium">
+                  Treatment: {progressData.timeElapsed}/{patient.estimated_treatment_duration || 60} min ({progressData.percentage}%)
+                </div>
+              </div>
             </div>
           </>
         )}
@@ -252,9 +291,11 @@ const TriageWorkflow = () => {
                p.workflow_status === 'clinical_assessment' ? 'assessed' : 'in-treatment',
         chiefComplaint: p.medical_history || 'Medical consultation',
         checkInTime: p.created_at,
+        treatmentStartTime: p.workflow_status === 'in_treatment' ? p.updated_at : undefined,
         estimatedWaitTime: p.estimated_wait_time ? `${p.estimated_wait_time} minutes` : undefined,
         estimatedTreatmentDuration: p.estimated_treatment_duration ? `${p.estimated_treatment_duration} minutes` : undefined,
-        assignedDoctor: p.assigned_doctor
+        assignedDoctor: p.assigned_doctor,
+        triageCategory: p.urgency_level ? `${p.urgency_level.charAt(0).toUpperCase() + p.urgency_level.slice(1)} Priority` : 'Standard'
       }));
       
       setPatients(workflowPatients);

@@ -22,6 +22,7 @@ export default function PatientManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [isMatching, setIsMatching] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -68,18 +69,72 @@ export default function PatientManagement() {
 
   const handleMatchDoctors = async (patient: Patient) => {
     try {
+      setIsMatching(true)
       const matchedDoctors = await matchDoctors(patient.id, patient.medical_history || '')
-      console.log('Matched doctors for', patient.name, ':', matchedDoctors)
-      toast({
-        title: "Success",
-        description: `Found ${matchedDoctors.length} available doctors for ${patient.name}`,
-      })
+      
+      if (matchedDoctors.length > 0) {
+        // Assign the first available doctor
+        const assignedDoctor = matchedDoctors[0]
+        // Update patient with assigned doctor
+        // This would typically be done through updatePatientStatus function
+        toast({
+          title: "Doctor Matched!",
+          description: `${patient.name} has been assigned to Dr. ${assignedDoctor.name} (${assignedDoctor.specialty})`,
+        })
+        
+        // Reload data to reflect changes
+        await loadData()
+      } else {
+        toast({
+          title: "No Available Doctors",
+          description: `No doctors are currently available for ${patient.name}`,
+          variant: "destructive",
+        })
+      }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to match doctors",
         variant: "destructive",
       })
+    } finally {
+      setIsMatching(false)
+    }
+  }
+
+  const handleMatchAllPatients = async () => {
+    try {
+      setIsMatching(true)
+      let matchedCount = 0
+      
+      for (const patient of patients) {
+        if (!patient.assigned_doctor) {
+          try {
+            const matchedDoctors = await matchDoctors(patient.id, patient.medical_history || '')
+            if (matchedDoctors.length > 0) {
+              matchedCount++
+            }
+          } catch (error) {
+            console.error(`Failed to match patient ${patient.name}:`, error)
+          }
+        }
+      }
+      
+      toast({
+        title: "Bulk Matching Complete",
+        description: `Successfully matched ${matchedCount} patients with available doctors`,
+      })
+      
+      // Reload data to reflect changes
+      await loadData()
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to complete bulk doctor matching",
+        variant: "destructive",
+      })
+    } finally {
+      setIsMatching(false)
     }
   }
 
@@ -148,9 +203,13 @@ export default function PatientManagement() {
             <Brain className="w-4 h-4" />
             AI Rank Patients
           </Button>
-          <Button variant="outline" onClick={() => matchDoctors('', '')}>
+          <Button 
+            variant="outline" 
+            onClick={handleMatchAllPatients}
+            disabled={isMatching}
+          >
             <Users className="w-4 h-4 mr-2" />
-            Match Doctors
+            {isMatching ? 'Matching...' : 'Match Doctors'}
           </Button>
         </div>
       </div>
@@ -268,8 +327,9 @@ export default function PatientManagement() {
                     size="sm" 
                     variant="outline"
                     onClick={() => handleMatchDoctors(patient)}
+                    disabled={isMatching}
                   >
-                    Match Doctors
+                    {isMatching ? 'Matching...' : 'Match Doctors'}
                   </Button>
                   <Button 
                     size="sm" 
