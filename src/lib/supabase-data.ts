@@ -34,7 +34,11 @@ export async function fetchPatients(): Promise<Patient[]> {
     throw error
   }
 
-  return data || []
+  return (data || []).map(patient => ({
+    ...patient,
+    workflow_status: patient.workflow_status as Patient['workflow_status'],
+    urgency_level: patient.urgency_level as Patient['urgency_level']
+  }))
 }
 
 // Add new patient
@@ -54,7 +58,11 @@ export async function addPatient(patient: Omit<Patient, 'id' | 'created_at' | 'u
     throw error
   }
 
-  return data
+  return {
+    ...data,
+    workflow_status: data.workflow_status as Patient['workflow_status'],
+    urgency_level: data.urgency_level as Patient['urgency_level']
+  }
 }
 
 // Update patient workflow status
@@ -75,7 +83,11 @@ export async function updatePatientStatus(patientId: string, status: Patient['wo
     throw error
   }
 
-  return data
+  return {
+    ...data,
+    workflow_status: data.workflow_status as Patient['workflow_status'],
+    urgency_level: data.urgency_level as Patient['urgency_level']
+  }
 }
 
 // Fetch doctors
