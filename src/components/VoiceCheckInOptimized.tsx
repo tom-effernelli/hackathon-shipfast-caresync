@@ -28,6 +28,7 @@ interface VoiceCheckInProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (data: any) => void;
+  onProgressUpdate?: (data: any) => void;
 }
 
 interface Question {
@@ -70,7 +71,7 @@ const questions: Question[] = [
   { id: '12', text: "What brings you here today?", field: "chiefComplaint", type: 'text', required: true, category: 'complaint' },
 ];
 
-export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceCheckInProps) => {
+export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete, onProgressUpdate }: VoiceCheckInProps) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [pendingAnswers, setPendingAnswers] = useState<Record<string, string>>({});
@@ -162,7 +163,11 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
       }
 
       console.log('Validated answers from batch:', validatedAnswers);
-      setAnswers(prev => ({ ...prev, ...validatedAnswers }));
+      setAnswers(prev => {
+        const updated = { ...prev, ...validatedAnswers };
+        onProgressUpdate?.(updated); // Sync to manual form
+        return updated;
+      });
       setBatchValidationQueue([]);
       setPendingAnswers({});
       
@@ -180,7 +185,11 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
       });
       
       console.log('Using local validation fallback:', localAnswers);
-      setAnswers(prev => ({ ...prev, ...localAnswers }));
+      setAnswers(prev => {
+        const updated = { ...prev, ...localAnswers };
+        onProgressUpdate?.(updated); // Sync to manual form
+        return updated;
+      });
       setBatchValidationQueue([]);
       setPendingAnswers({});
       
@@ -289,7 +298,11 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
     if (localValidation.isValid && localValidation.confidence > 0.85) {
       // High confidence local validation - instant advance
       const finalAnswer = localValidation.processedValue || transcript;
-      setAnswers(prev => ({ ...prev, [currentQuestion.field]: finalAnswer }));
+      setAnswers(prev => {
+        const updated = { ...prev, [currentQuestion.field]: finalAnswer };
+        onProgressUpdate?.(updated); // Sync to manual form
+        return updated;
+      });
       setValidationState('valid');
       setValidationMessage("Perfect! Moving on...");
       
@@ -309,7 +322,11 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
     } else if (quickMode) {
       // Quick mode: use only local validation, no batch processing
       const finalAnswer = localValidation.processedValue || transcript;
-      setAnswers(prev => ({ ...prev, [currentQuestion.field]: finalAnswer }));
+      setAnswers(prev => {
+        const updated = { ...prev, [currentQuestion.field]: finalAnswer };
+        onProgressUpdate?.(updated); // Sync to manual form
+        return updated;
+      });
       setValidationState('valid');
       setValidationMessage("Quick validation - moving on...");
       
@@ -403,7 +420,11 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
 
   const skipQuestion = () => {
     if (!currentQuestion?.required) {
-      setAnswers(prev => ({ ...prev, [currentQuestion.field]: "" }));
+      setAnswers(prev => {
+        const updated = { ...prev, [currentQuestion.field]: "" };
+        onProgressUpdate?.(updated); // Sync to manual form
+        return updated;
+      });
       advanceToNext();
     }
   };
@@ -483,9 +504,13 @@ export const VoiceCheckInOptimized = ({ isOpen, onClose, onComplete }: VoiceChec
           const local = validateLocally(item.question.field, item.answer);
           localAnswers[item.question.field] = local.processedValue || item.answer;
         });
-        setAnswers(prev => ({ ...prev, ...localAnswers }));
-        setBatchValidationQueue([]);
-        setPendingAnswers({});
+         setAnswers(prev => {
+           const updated = { ...prev, ...localAnswers };
+           onProgressUpdate?.(updated); // Sync to manual form
+           return updated;
+         });
+         setBatchValidationQueue([]);
+         setPendingAnswers({});
       }
     } else {
       toast.info("Standard mode enabled - AI validation");

@@ -171,6 +171,17 @@ const PatientCheckIn = () => {
     toast.success("Voice check-in completed! Please review and submit the form.");
   };
 
+  const handleVoiceProgressUpdate = (voiceData: Partial<PatientForm>) => {
+    // Update form fields in real-time as voice check-in progresses
+    Object.entries(voiceData).forEach(([key, value]) => {
+      if (value && typeof value === 'string' && value.trim() !== '') {
+        setValue(key as keyof PatientForm, value);
+      } else if (typeof value === 'number' && value > 0) {
+        setValue(key as keyof PatientForm, value);
+      }
+    });
+  };
+
   if (checkInResult) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -535,6 +546,7 @@ const PatientCheckIn = () => {
           isOpen={showVoiceCheckIn}
           onClose={() => setShowVoiceCheckIn(false)}
           onComplete={handleVoiceCheckInComplete}
+          onProgressUpdate={handleVoiceProgressUpdate}
         />
       </div>
     </div>
