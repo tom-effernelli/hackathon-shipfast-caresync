@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-// Lucide React icons - no Pulse icon exists in this library
 import { Search, Clock, User, Activity, AlertTriangle, CheckCircle, UserCheck, Stethoscope, Timer, Heart, BarChart3, TrendingUp, Users } from "lucide-react";
 import { toast } from "sonner";
 import { ClinicalAssessmentModal } from "@/components/ClinicalAssessmentModal";
