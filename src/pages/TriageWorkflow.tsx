@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from '@dnd-kit/core';
+import { useState, useEffect } from "react";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { fetchPatients, updatePatientStatus, type Patient as SupabasePatient } from "@/lib/supabase-data";
@@ -11,7 +11,6 @@ import { Separator } from "@/components/ui/separator";
 import { Search, Clock, User, Activity, AlertTriangle, CheckCircle, UserCheck, Stethoscope, Timer, Heart, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { ClinicalAssessmentModal } from "@/components/ClinicalAssessmentModal";
-import { PatientDetailsModal } from "@/components/PatientDetailsModal";
 interface Patient extends SupabasePatient {
   status?: 'checked-in' | 'assessed' | 'in-treatment';
   chiefComplaint?: string;
@@ -134,51 +133,23 @@ const PatientCard = ({
       return `Treatment: ${progressData.timeElapsed}/${estimatedDuration} min (${progressData.percentage}%)`;
     }
   };
-  const [dragStarted, setDragStarted] = useState(false);
-  const dragTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setDragStarted(false);
-    dragTimeoutRef.current = setTimeout(() => {
-      setDragStarted(true);
-    }, 150);
-  };
-
   const handleCardClick = (e: React.MouseEvent) => {
-    if (dragStarted || isDragging) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-    
-    if (dragTimeoutRef.current) {
-      clearTimeout(dragTimeoutRef.current);
-    }
-    
-    if (onCardClick) {
+    if (patient.status === 'checked-in' && onCardClick) {
       e.stopPropagation();
       onCardClick(patient);
+      return;
     }
   };
 
-  const handlePointerUp = () => {
-    if (dragTimeoutRef.current) {
-      clearTimeout(dragTimeoutRef.current);
-    }
-    setTimeout(() => {
-      setDragStarted(false);
-    }, 100);
-  };
+  const cardProps = patient.status === 'checked-in' 
+    ? { onClick: handleCardClick }
+    : { ...attributes, ...listeners };
 
   return <Card 
     ref={setNodeRef} 
     style={style} 
-    onPointerDown={handlePointerDown}
-    onPointerUp={handlePointerUp}
-    onClick={handleCardClick}
-    {...attributes}
-    {...listeners}
-    className={`${isDragging ? 'cursor-grabbing' : 'cursor-grab'} hover:shadow-md transition-all touch-none ${isDragging ? 'ring-2 ring-primary' : ''}`}
+    {...cardProps}
+    className={`${patient.status === 'checked-in' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary' : ''}`}
   >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -279,12 +250,8 @@ const Column = ({
   themeColor: string;
   onPatientCardClick?: (patient: Patient) => void;
 }) => {
-  const { isOver, setNodeRef } = useDroppable({
-    id: `${status}-column`
-  });
-
-  return <div className="flex-1 min-w-0" ref={setNodeRef}>
-      <Card className={`h-full border-${themeColor}/20 ${isOver ? 'ring-2 ring-primary bg-primary/5' : ''}`}>
+  return <div className="flex-1 min-w-0">
+      <Card className={`h-full border-${themeColor}/20`}>
         <CardHeader className={`bg-${themeColor}/5 border-b border-${themeColor}/10`}>
           <CardTitle className={`flex items-center gap-2 text-${themeColor}`}>
             <Icon className="w-5 h-5" />
@@ -296,12 +263,12 @@ const Column = ({
         </CardHeader>
         <CardContent className="p-4 h-[calc(100vh-200px)] overflow-y-auto">
           <SortableContext items={patients.map(p => p.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3 min-h-[100px]">
+            <div className="space-y-3">
               {patients.map(patient => (
                 <PatientCard 
                   key={patient.id} 
                   patient={patient} 
-                  onCardClick={onPatientCardClick}
+                  onCardClick={status === 'checked-in' ? onPatientCardClick : undefined}
                 />
               ))}
               {patients.length === 0 && <div className="text-center py-8 text-muted-foreground">
@@ -320,8 +287,6 @@ const TriageWorkflow = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPatientForDetails, setSelectedPatientForDetails] = useState<Patient | null>(null);
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   useEffect(() => {
     loadPatients();
   }, []);
@@ -403,26 +368,15 @@ const TriageWorkflow = () => {
 
     // Find the patient being dragged
     const activePatient = patients.find(p => p.id === activeId);
-    if (!activePatient) {
-      setActiveId(null);
-      return;
-    }
+    if (!activePatient) return;
 
-    // Determine the new status based on what was dropped on
+    // Determine the new status based on which column was dropped into
     let newStatus: Patient['status'] = activePatient.status;
 
-    // Check if dropped on a column
-    if (overId.endsWith('-column')) {
-      const columnStatus = overId.replace('-column', '');
-      if (columnStatus === 'checked-in' || columnStatus === 'assessed' || columnStatus === 'in-treatment') {
-        newStatus = columnStatus as Patient['status'];
-      }
-    } else {
-      // Check if dropped on a patient card (get that patient's status)
-      const overPatient = patients.find(p => p.id === overId);
-      if (overPatient) {
-        newStatus = overPatient.status;
-      }
+    // Check if dropped on a patient card (get that patient's status)
+    const overPatient = patients.find(p => p.id === overId);
+    if (overPatient) {
+      newStatus = overPatient.status;
     }
 
     // Update patient status if it changed
@@ -445,25 +399,13 @@ const TriageWorkflow = () => {
     setActiveId(null);
   };
   const handlePatientCardClick = (patient: Patient) => {
-    if (patient.status === 'checked-in') {
-      // Open Clinical Assessment Modal for checked-in patients
-      setSelectedPatient(patient);
-      setIsModalOpen(true);
-    } else {
-      // Open Patient Details Modal for assessed or in-treatment patients
-      setSelectedPatientForDetails(patient);
-      setIsDetailsModalOpen(true);
-    }
+    setSelectedPatient(patient);
+    setIsModalOpen(true);
   };
 
   const handleModalClose = () => {
     setIsModalOpen(false);
     setSelectedPatient(null);
-  };
-
-  const handleDetailsModalClose = () => {
-    setIsDetailsModalOpen(false);
-    setSelectedPatientForDetails(null);
   };
 
   const handlePatientUpdated = () => {
@@ -536,7 +478,6 @@ const TriageWorkflow = () => {
               status="assessed" 
               icon={Heart} 
               themeColor="orange" 
-              onPatientCardClick={handlePatientCardClick}
             />
             <Column 
               title="In Treatment" 
@@ -544,7 +485,6 @@ const TriageWorkflow = () => {
               status="in-treatment" 
               icon={Activity} 
               themeColor="green" 
-              onPatientCardClick={handlePatientCardClick}
             />
           </div>
 
@@ -558,14 +498,6 @@ const TriageWorkflow = () => {
           patient={selectedPatient}
           isOpen={isModalOpen}
           onClose={handleModalClose}
-          onPatientUpdated={handlePatientUpdated}
-        />
-
-        {/* Patient Details Modal */}
-        <PatientDetailsModal
-          patient={selectedPatientForDetails}
-          isOpen={isDetailsModalOpen}
-          onClose={handleDetailsModalClose}
           onPatientUpdated={handlePatientUpdated}
         />
       </div>
