@@ -144,170 +144,68 @@ export const ClinicalAssessmentModal = ({
 
           {/* AI Analysis Section */}
           {aiAnalysis && (
-            <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200 animate-fade-in">
+            <Card className="border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-3">
-                  <div className="relative">
-                    <Brain className="w-6 h-6 text-blue-600 animate-pulse" />
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-ping"></div>
-                  </div>
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent font-bold">
-                    🤖 Analyse IA Préliminaire
-                  </span>
+                <CardTitle className="flex items-center gap-2 text-foreground">
+                  <Brain className="w-5 h-5" />
+                  Preliminary AI Analysis
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Tri Score - Main highlight */}
-                <div className="flex justify-center animate-scale-in">
-                  <Badge className={`text-lg px-6 py-2 font-bold text-center ${getTriScoreColor(aiAnalysis.tri_score)}`}>
-                    <Target className="w-5 h-5 mr-2" />
-                    Score de Tri: {aiAnalysis.tri_score}
+              <CardContent className="space-y-4">
+                {/* Triage Score */}
+                <div className="flex justify-center">
+                  <Badge className={`text-sm px-4 py-1 font-medium ${getTriScoreColor(aiAnalysis.tri_score)}`}>
+                    Triage Score: {aiAnalysis.tri_score}
                   </Badge>
                 </div>
 
-                {/* Main reason */}
-                {aiAnalysis.main_reason && (
-                  <Card className="bg-white/70 border-blue-200 animate-fade-in" style={{animationDelay: '0.1s'}}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Stethoscope className="w-5 h-5 text-blue-600" />
-                        <Label className="font-semibold text-blue-800">Raison Principale</Label>
-                      </div>
-                      <p className="text-lg font-medium">{aiAnalysis.main_reason}</p>
-                    </CardContent>
-                  </Card>
-                )}
+                {/* Key Information Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Primary Reason */}
+                  {aiAnalysis.main_reason && (
+                    <div className="border rounded-lg p-3">
+                      <Label className="text-sm font-medium text-muted-foreground">Primary Reason</Label>
+                      <p className="text-sm font-medium mt-1">{aiAnalysis.main_reason}</p>
+                    </div>
+                  )}
 
-                {/* Alarming signs */}
-                {aiAnalysis.alarming_signs && aiAnalysis.alarming_signs.length > 0 && (
-                  <Card className="bg-red-50 border-red-200 animate-fade-in" style={{animationDelay: '0.2s'}}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center gap-3 mb-3">
-                        <AlertTriangle className="w-5 h-5 text-red-600" />
-                        <Label className="font-semibold text-red-800">Signes Alarmants</Label>
-                      </div>
-                      <div className="space-y-2">
+                  {/* Alarming Signs */}
+                  {aiAnalysis.alarming_signs && aiAnalysis.alarming_signs.length > 0 && (
+                    <div className="border rounded-lg p-3">
+                      <Label className="text-sm font-medium text-muted-foreground">Alarming Signs</Label>
+                      <div className="mt-1 space-y-1">
                         {aiAnalysis.alarming_signs.map((sign: string, index: number) => (
-                          <div key={index} className="flex items-start gap-2 animate-fade-in" style={{animationDelay: `${0.3 + index * 0.1}s`}}>
-                            <AlertCircle className="w-4 h-4 text-red-500 mt-1 flex-shrink-0" />
-                            <span className="text-red-700">{sign}</span>
+                          <div key={index} className="flex items-start gap-2">
+                            <AlertTriangle className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm">{sign}</span>
                           </div>
                         ))}
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Data used and missing - side by side */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* Data used */}
-                  {aiAnalysis.data_used && aiAnalysis.data_used.length > 0 && (
-                    <Card className="bg-green-50 border-green-200 animate-fade-in" style={{animationDelay: '0.3s'}}>
-                      <CardContent className="pt-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <CheckSquare className="w-5 h-5 text-green-600" />
-                          <Label className="font-semibold text-green-800">Données Utilisées</Label>
-                        </div>
-                        <div className="space-y-2">
-                          {aiAnalysis.data_used.map((data: string, index: number) => (
-                            <div key={index} className="flex items-center gap-2">
-                              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                              <span className="text-green-700 text-sm">{data}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
+                    </div>
                   )}
 
-                  {/* Missing data */}
-                  {aiAnalysis.missing_data && aiAnalysis.missing_data.length > 0 && (
-                    <Card className="bg-orange-50 border-orange-200 animate-fade-in" style={{animationDelay: '0.4s'}}>
-                      <CardContent className="pt-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <AlertCircle className="w-5 h-5 text-orange-600" />
-                          <Label className="font-semibold text-orange-800">Données Manquantes</Label>
-                        </div>
-                        <div className="space-y-2">
-                          {aiAnalysis.missing_data.map((data: string, index: number) => (
-                            <div key={index} className="flex items-start gap-2">
-                              <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                              <span className="text-orange-700 text-sm">{data}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
+                  {/* Wait Time */}
+                  {aiAnalysis.estimated_wait_time_minutes && (
+                    <div className="border rounded-lg p-3 text-center">
+                      <Label className="text-sm font-medium text-muted-foreground block">Estimated Wait Time</Label>
+                      <p className="text-lg font-semibold mt-1">{aiAnalysis.estimated_wait_time_minutes} min</p>
+                    </div>
+                  )}
+
+                  {/* Treatment Duration */}
+                  {aiAnalysis.estimated_treatment_duration_minutes && (
+                    <div className="border rounded-lg p-3 text-center">
+                      <Label className="text-sm font-medium text-muted-foreground block">Treatment Duration</Label>
+                      <p className="text-lg font-semibold mt-1">{aiAnalysis.estimated_treatment_duration_minutes} min</p>
+                    </div>
                   )}
                 </div>
 
-                {/* Estimations */}
-                {(aiAnalysis.estimated_wait_time_minutes || aiAnalysis.estimated_treatment_duration_minutes) && (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {aiAnalysis.estimated_wait_time_minutes && (
-                      <Card className="bg-blue-50 border-blue-200 animate-fade-in" style={{animationDelay: '0.5s'}}>
-                        <CardContent className="pt-4 text-center">
-                          <Clock className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                          <Label className="block font-semibold text-blue-800 mb-1">Temps d'Attente Estimé</Label>
-                          <p className="text-2xl font-bold text-blue-600">{aiAnalysis.estimated_wait_time_minutes} min</p>
-                        </CardContent>
-                      </Card>
-                    )}
-                    {aiAnalysis.estimated_treatment_duration_minutes && (
-                      <Card className="bg-purple-50 border-purple-200 animate-fade-in" style={{animationDelay: '0.6s'}}>
-                        <CardContent className="pt-4 text-center">
-                          <Activity className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                          <Label className="block font-semibold text-purple-800 mb-1">Durée de Traitement</Label>
-                          <p className="text-2xl font-bold text-purple-600">{aiAnalysis.estimated_treatment_duration_minutes} min</p>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                )}
-
-                {/* Expandable sections for justification and recommendations */}
-                <div className="space-y-3">
-                  {aiAnalysis.justification && (
-                    <Collapsible>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between hover:bg-blue-50">
-                          <span className="flex items-center gap-2">
-                            <Target className="w-4 h-4" />
-                            Justification de l'Analyse
-                          </span>
-                          <ChevronDown className="w-4 h-4" />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <Card className="mt-2 bg-white/70">
-                          <CardContent className="pt-4">
-                            <p className="text-sm leading-relaxed">{aiAnalysis.justification}</p>
-                          </CardContent>
-                        </Card>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
-
-                  {aiAnalysis.recommendations && (
-                    <Collapsible>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between hover:bg-green-50">
-                          <span className="flex items-center gap-2">
-                            <CheckSquare className="w-4 h-4" />
-                            Recommandations
-                          </span>
-                          <ChevronDown className="w-4 h-4" />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <Card className="mt-2 bg-white/70">
-                          <CardContent className="pt-4">
-                            <p className="text-sm leading-relaxed">{aiAnalysis.recommendations}</p>
-                          </CardContent>
-                        </Card>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  )}
+                {/* Anthropic Attribution */}
+                <div className="text-center pt-2 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    Generated by Anthropic Claude with text and image analysis
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -315,10 +213,10 @@ export const ClinicalAssessmentModal = ({
 
           {/* No AI Analysis Message */}
           {!aiAnalysis && (
-            <Card className="bg-muted/30 border-dashed">
+            <Card className="border-dashed">
               <CardContent className="pt-6 text-center">
-                <Brain className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                <p className="text-muted-foreground">Aucune analyse IA préliminaire disponible pour ce patient.</p>
+                <Brain className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm">No preliminary AI analysis available for this patient.</p>
               </CardContent>
             </Card>
           )}
