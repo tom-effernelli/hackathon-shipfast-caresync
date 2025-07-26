@@ -119,11 +119,15 @@ export async function updatePatientStatus(patientId: string, status: Patient['wo
     })
     .eq('id', patientId)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) {
     console.error('Error updating patient status:', error)
     throw error
+  }
+
+  if (!data) {
+    throw new Error(`Patient with ID ${patientId} not found or cannot be updated`)
   }
 
   return {
