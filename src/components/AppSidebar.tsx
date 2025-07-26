@@ -30,6 +30,7 @@ export function AppSidebar() {
     { title: "Triage Board", url: "/", icon: Activity },
     { title: "Patient Check-In", url: "/patient-checkin", icon: UserCheck },
     { title: "Triage Analysis", url: "/triage", icon: Heart },
+    { title: "Analytics Dashboard", url: "/statistics", icon: BarChart3 },
   ];
 
   const getRoleBadgeColor = (role: string) => {
