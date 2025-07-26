@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Search, Clock, User, Activity, AlertTriangle, CheckCircle, UserCheck, Stethoscope, Timer, Heart, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { ClinicalAssessmentModal } from "@/components/ClinicalAssessmentModal";
+import { PatientDetailsModal } from "@/components/PatientDetailsModal";
 interface Patient extends SupabasePatient {
   status?: 'checked-in' | 'assessed' | 'in-treatment';
   chiefComplaint?: string;
@@ -134,14 +135,14 @@ const PatientCard = ({
     }
   };
   const handleCardClick = (e: React.MouseEvent) => {
-    if (patient.status === 'checked-in' && onCardClick) {
+    if (onCardClick) {
       e.stopPropagation();
       onCardClick(patient);
       return;
     }
   };
 
-  const cardProps = patient.status === 'checked-in' 
+  const cardProps = onCardClick 
     ? { onClick: handleCardClick }
     : { ...attributes, ...listeners };
 
@@ -149,7 +150,7 @@ const PatientCard = ({
     ref={setNodeRef} 
     style={style} 
     {...cardProps}
-    className={`${patient.status === 'checked-in' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary' : ''}`}
+    className={`${onCardClick ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary' : ''}`}
   >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -268,7 +269,7 @@ const Column = ({
                 <PatientCard 
                   key={patient.id} 
                   patient={patient} 
-                  onCardClick={status === 'checked-in' ? onPatientCardClick : undefined}
+                  onCardClick={onPatientCardClick}
                 />
               ))}
               {patients.length === 0 && <div className="text-center py-8 text-muted-foreground">
@@ -287,6 +288,8 @@ const TriageWorkflow = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPatientForDetails, setSelectedPatientForDetails] = useState<Patient | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   useEffect(() => {
     loadPatients();
   }, []);
@@ -399,13 +402,25 @@ const TriageWorkflow = () => {
     setActiveId(null);
   };
   const handlePatientCardClick = (patient: Patient) => {
-    setSelectedPatient(patient);
-    setIsModalOpen(true);
+    if (patient.status === 'checked-in') {
+      // Open Clinical Assessment Modal for checked-in patients
+      setSelectedPatient(patient);
+      setIsModalOpen(true);
+    } else {
+      // Open Patient Details Modal for assessed or in-treatment patients
+      setSelectedPatientForDetails(patient);
+      setIsDetailsModalOpen(true);
+    }
   };
 
   const handleModalClose = () => {
     setIsModalOpen(false);
     setSelectedPatient(null);
+  };
+
+  const handleDetailsModalClose = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedPatientForDetails(null);
   };
 
   const handlePatientUpdated = () => {
@@ -478,6 +493,7 @@ const TriageWorkflow = () => {
               status="assessed" 
               icon={Heart} 
               themeColor="orange" 
+              onPatientCardClick={handlePatientCardClick}
             />
             <Column 
               title="In Treatment" 
@@ -485,6 +501,7 @@ const TriageWorkflow = () => {
               status="in-treatment" 
               icon={Activity} 
               themeColor="green" 
+              onPatientCardClick={handlePatientCardClick}
             />
           </div>
 
@@ -498,6 +515,14 @@ const TriageWorkflow = () => {
           patient={selectedPatient}
           isOpen={isModalOpen}
           onClose={handleModalClose}
+          onPatientUpdated={handlePatientUpdated}
+        />
+
+        {/* Patient Details Modal */}
+        <PatientDetailsModal
+          patient={selectedPatientForDetails}
+          isOpen={isDetailsModalOpen}
+          onClose={handleDetailsModalClose}
           onPatientUpdated={handlePatientUpdated}
         />
       </div>
