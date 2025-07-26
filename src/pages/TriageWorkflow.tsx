@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { fetchPatients, updatePatientStatus, type Patient as SupabasePatient } from "@/lib/supabase-data";
@@ -250,6 +250,10 @@ const Column = ({
   themeColor: string;
   onPatientCardClick?: (patient: Patient) => void;
 }) => {
+  const { setNodeRef } = useDroppable({
+    id: `column-${status}`
+  });
+  
   return <div className="flex-1 min-w-0">
       <Card className={`h-full border-${themeColor}/20`}>
         <CardHeader className={`bg-${themeColor}/5 border-b border-${themeColor}/10`}>
@@ -261,7 +265,7 @@ const Column = ({
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 h-[calc(100vh-200px)] overflow-y-auto">
+        <CardContent ref={setNodeRef} className="p-4 h-[calc(100vh-200px)] overflow-y-auto">
           <SortableContext items={patients.map(p => p.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-3">
               {patients.map(patient => (
@@ -370,20 +374,30 @@ const TriageWorkflow = () => {
     const activePatient = patients.find(p => p.id === activeId);
     if (!activePatient) return;
 
-    // Determine the new status based on which column was dropped into
+    // Determine the new status based on what was dropped on
     let newStatus: Patient['status'] = activePatient.status;
 
-    // Check if dropped on a patient card (get that patient's status)
-    const overPatient = patients.find(p => p.id === overId);
-    if (overPatient) {
-      newStatus = overPatient.status;
+    // Check if dropped on a column
+    if (overId.startsWith('column-')) {
+      const columnStatus = overId.replace('column-', '');
+      newStatus = columnStatus as Patient['status'];
+    } else {
+      // Check if dropped on a patient card (get that patient's status)
+      const overPatient = patients.find(p => p.id === overId);
+      if (overPatient) {
+        newStatus = overPatient.status;
+      }
     }
+
+    console.log(`Drag end: ${activePatient.name} from ${activePatient.status} to ${newStatus}`);
 
     // Update patient status if it changed
     if (newStatus !== activePatient.status) {
       try {
         // Map workflow status back to Supabase status
         const supabaseStatus = newStatus === 'checked-in' ? 'self_checkin' : newStatus === 'assessed' ? 'clinical_assessment' : 'in_treatment';
+
+        console.log(`Updating patient ${activeId} to status: ${supabaseStatus}`);
 
         // Update in Supabase
         await updatePatientStatus(activeId, supabaseStatus);
@@ -395,6 +409,8 @@ const TriageWorkflow = () => {
         console.error('Error updating patient status:', error);
         toast.error('Failed to update patient status');
       }
+    } else {
+      console.log('No status change needed');
     }
     setActiveId(null);
   };
