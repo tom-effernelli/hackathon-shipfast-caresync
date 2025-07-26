@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Search, Clock, User, Activity, AlertTriangle, CheckCircle, UserCheck, Stethoscope, Timer, Heart, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
+import { ClinicalAssessmentModal } from "@/components/ClinicalAssessmentModal";
 interface Patient extends SupabasePatient {
   status?: 'checked-in' | 'assessed' | 'in-treatment';
   chiefComplaint?: string;
@@ -68,10 +69,12 @@ const useRealTimeProgress = (patient: Patient) => {
 };
 const PatientCard = ({
   patient,
-  isDragging
+  isDragging,
+  onCardClick
 }: {
   patient: Patient;
   isDragging?: boolean;
+  onCardClick?: (patient: Patient) => void;
 }) => {
   const {
     attributes,
@@ -130,7 +133,24 @@ const PatientCard = ({
       return `Treatment: ${progressData.timeElapsed}/${estimatedDuration} min (${progressData.percentage}%)`;
     }
   };
-  return <Card ref={setNodeRef} style={style} {...attributes} {...listeners} className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${isDragging ? 'ring-2 ring-primary' : ''}`}>
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (patient.status === 'checked-in' && onCardClick) {
+      e.stopPropagation();
+      onCardClick(patient);
+      return;
+    }
+  };
+
+  const cardProps = patient.status === 'checked-in' 
+    ? { onClick: handleCardClick }
+    : { ...attributes, ...listeners };
+
+  return <Card 
+    ref={setNodeRef} 
+    style={style} 
+    {...cardProps}
+    className={`${patient.status === 'checked-in' ? 'cursor-pointer hover:bg-accent/50' : 'cursor-grab active:cursor-grabbing'} hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary' : ''} ${patient.status === 'checked-in' ? 'border-blue-200 hover:border-blue-300' : ''}`}
+  >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -215,13 +235,15 @@ const Column = ({
   patients,
   status,
   icon: Icon,
-  themeColor
+  themeColor,
+  onPatientCardClick
 }: {
   title: string;
   patients: Patient[];
   status: string;
   icon: any;
   themeColor: string;
+  onPatientCardClick?: (patient: Patient) => void;
 }) => {
   return <div className="flex-1 min-w-0">
       <Card className={`h-full border-${themeColor}/20`}>
@@ -237,7 +259,13 @@ const Column = ({
         <CardContent className="p-4 h-[calc(100vh-200px)] overflow-y-auto">
           <SortableContext items={patients.map(p => p.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-3">
-              {patients.map(patient => <PatientCard key={patient.id} patient={patient} />)}
+              {patients.map(patient => (
+                <PatientCard 
+                  key={patient.id} 
+                  patient={patient} 
+                  onCardClick={status === 'checked-in' ? onPatientCardClick : undefined}
+                />
+              ))}
               {patients.length === 0 && <div className="text-center py-8 text-muted-foreground">
                   <Icon className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No patients in this stage</p>
@@ -252,6 +280,8 @@ const TriageWorkflow = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   useEffect(() => {
     loadPatients();
   }, []);
@@ -363,6 +393,20 @@ const TriageWorkflow = () => {
     }
     setActiveId(null);
   };
+  const handlePatientCardClick = (patient: Patient) => {
+    setSelectedPatient(patient);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedPatient(null);
+  };
+
+  const handlePatientUpdated = () => {
+    loadPatients();
+  };
+
   const activePatient = activeId ? patients.find(p => p.id === activeId) : null;
   return <div className="min-h-screen bg-background p-4">
       <div className="max-w-7xl mx-auto">
@@ -415,15 +459,42 @@ const TriageWorkflow = () => {
         {/* Kanban Board */}
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Column title="Self Check-In Complete" patients={checkedInPatients} status="checked-in" icon={UserCheck} themeColor="blue" />
-            <Column title="Clinical Assessment Complete" patients={assessedPatients} status="assessed" icon={Heart} themeColor="orange" />
-            <Column title="In Treatment" patients={inTreatmentPatients} status="in-treatment" icon={Activity} themeColor="green" />
+            <Column 
+              title="Self Check-In Complete" 
+              patients={checkedInPatients} 
+              status="checked-in" 
+              icon={UserCheck} 
+              themeColor="blue" 
+              onPatientCardClick={handlePatientCardClick}
+            />
+            <Column 
+              title="Clinical Assessment Complete" 
+              patients={assessedPatients} 
+              status="assessed" 
+              icon={Heart} 
+              themeColor="orange" 
+            />
+            <Column 
+              title="In Treatment" 
+              patients={inTreatmentPatients} 
+              status="in-treatment" 
+              icon={Activity} 
+              themeColor="green" 
+            />
           </div>
 
           <DragOverlay>
             {activePatient && <PatientCard patient={activePatient} isDragging />}
           </DragOverlay>
         </DndContext>
+
+        {/* Clinical Assessment Modal */}
+        <ClinicalAssessmentModal
+          patient={selectedPatient}
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          onPatientUpdated={handlePatientUpdated}
+        />
       </div>
     </div>;
 };
