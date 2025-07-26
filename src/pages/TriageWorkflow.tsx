@@ -184,7 +184,7 @@ const PatientCard = ({
                 patient.urgency_level === 'critical' ? 'bg-red-100 text-red-800 border-red-200' :
                 patient.urgency_level === 'high' ? 'bg-red-50 text-red-700 border-red-200' :
                 patient.urgency_level === 'moderate' ? 'bg-orange-100 text-orange-800 border-orange-200' :
-                'bg-green-100 text-green-800 border-green-200'
+                'bg-yellow-100 text-yellow-800 border-yellow-200'
               }`}>
                 <AlertTriangle className="w-3 h-3 mr-1" />
                 {patient.triageCategory}
