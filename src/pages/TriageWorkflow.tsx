@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors, closestCorners, useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { fetchPatients, updatePatientStatus, type Patient as SupabasePatient } from "@/lib/supabase-data";
@@ -279,8 +279,12 @@ const Column = ({
   themeColor: string;
   onPatientCardClick?: (patient: Patient) => void;
 }) => {
-  return <div className="flex-1 min-w-0">
-      <Card className={`h-full border-${themeColor}/20`}>
+  const { isOver, setNodeRef } = useDroppable({
+    id: `${status}-column`
+  });
+
+  return <div className="flex-1 min-w-0" ref={setNodeRef}>
+      <Card className={`h-full border-${themeColor}/20 ${isOver ? 'ring-2 ring-primary bg-primary/5' : ''}`}>
         <CardHeader className={`bg-${themeColor}/5 border-b border-${themeColor}/10`}>
           <CardTitle className={`flex items-center gap-2 text-${themeColor}`}>
             <Icon className="w-5 h-5" />
@@ -292,7 +296,7 @@ const Column = ({
         </CardHeader>
         <CardContent className="p-4 h-[calc(100vh-200px)] overflow-y-auto">
           <SortableContext items={patients.map(p => p.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3">
+            <div className="space-y-3 min-h-[100px]">
               {patients.map(patient => (
                 <PatientCard 
                   key={patient.id} 
@@ -399,15 +403,26 @@ const TriageWorkflow = () => {
 
     // Find the patient being dragged
     const activePatient = patients.find(p => p.id === activeId);
-    if (!activePatient) return;
+    if (!activePatient) {
+      setActiveId(null);
+      return;
+    }
 
-    // Determine the new status based on which column was dropped into
+    // Determine the new status based on what was dropped on
     let newStatus: Patient['status'] = activePatient.status;
 
-    // Check if dropped on a patient card (get that patient's status)
-    const overPatient = patients.find(p => p.id === overId);
-    if (overPatient) {
-      newStatus = overPatient.status;
+    // Check if dropped on a column
+    if (overId.endsWith('-column')) {
+      const columnStatus = overId.replace('-column', '');
+      if (columnStatus === 'checked-in' || columnStatus === 'assessed' || columnStatus === 'in-treatment') {
+        newStatus = columnStatus as Patient['status'];
+      }
+    } else {
+      // Check if dropped on a patient card (get that patient's status)
+      const overPatient = patients.find(p => p.id === overId);
+      if (overPatient) {
+        newStatus = overPatient.status;
+      }
     }
 
     // Update patient status if it changed
