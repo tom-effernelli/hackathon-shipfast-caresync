@@ -180,7 +180,7 @@ const PatientCard = ({
 
         {patient.status === 'assessed' && <>
             <div className="space-y-2">
-              <Badge variant={getUrgencyColor(patient.urgency_level || 'low')} className="text-xs">
+              <Badge variant={getUrgencyColor(patient.urgency_level || 'low')} className="text-xs bg-orange-100 text-orange-800 border-orange-200">
                 <AlertTriangle className="w-3 h-3 mr-1" />
                 {patient.triageCategory}
               </Badge>
