@@ -149,7 +149,7 @@ const PatientCard = ({
     ref={setNodeRef} 
     style={style} 
     {...cardProps}
-    className={`${patient.status === 'checked-in' ? 'cursor-pointer hover:bg-accent/50' : 'cursor-grab active:cursor-grabbing'} hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary' : ''} ${patient.status === 'checked-in' ? 'border-blue-200 hover:border-blue-300' : ''}`}
+    className={`${patient.status === 'checked-in' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} hover:shadow-md transition-all ${isDragging ? 'ring-2 ring-primary' : ''}`}
   >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
