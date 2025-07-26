@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      doctors: {
+        Row: {
+          availability: boolean
+          created_at: string
+          id: string
+          name: string
+          specialty: string
+        }
+        Insert: {
+          availability?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          specialty: string
+        }
+        Update: {
+          availability?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          specialty?: string
+        }
+        Relationships: []
+      }
+      patients: {
+        Row: {
+          age: number
+          assigned_doctor: string | null
+          created_at: string
+          estimated_treatment_duration: number | null
+          estimated_wait_time: number | null
+          id: string
+          medical_history: string | null
+          name: string
+          updated_at: string
+          urgency_level: string | null
+          workflow_status: string
+        }
+        Insert: {
+          age: number
+          assigned_doctor?: string | null
+          created_at?: string
+          estimated_treatment_duration?: number | null
+          estimated_wait_time?: number | null
+          id?: string
+          medical_history?: string | null
+          name: string
+          updated_at?: string
+          urgency_level?: string | null
+          workflow_status?: string
+        }
+        Update: {
+          age?: number
+          assigned_doctor?: string | null
+          created_at?: string
+          estimated_treatment_duration?: number | null
+          estimated_wait_time?: number | null
+          id?: string
+          medical_history?: string | null
+          name?: string
+          updated_at?: string
+          urgency_level?: string | null
+          workflow_status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
