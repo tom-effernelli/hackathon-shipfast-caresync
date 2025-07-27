@@ -1,8 +1,4 @@
-# Welcome to your Lovable project
-
-## Project info
-
-**URL**: https://lovable.dev/projects/4355a619-62de-406c-b796-71291a99d6b7
+# Welcome to the CareSync project
 
 ## How can I edit this code?
 
