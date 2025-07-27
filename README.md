@@ -1,6 +1,10 @@
 # Welcome to the CareSync project
 
-[CareSync-presentation-video](CareSync-presentation-video.mp4)
+
+
+https://github.com/user-attachments/assets/3f42b9ac-d325-4b4f-b3b1-d22c6143fdd9
+
+
 
 ## How can I edit this code?
 
