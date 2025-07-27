@@ -1,6 +1,6 @@
 # Welcome to the CareSync project
 
-[CareSync-presentation-video](/CareSync-presentation-video)
+[CareSync-presentation-video](CareSync-presentation-video.mp4)
 
 ## How can I edit this code?
 
