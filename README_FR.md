@@ -16,11 +16,11 @@ Ce projet a été développé dans le cadre du hackathon **Shipfast w/ Anthropic
 
 ## Membres de l'Équipe
 
-- **Paul Archer**
-- **Tom Effernelli**
-- **Orpheo Hellandsjo**
-- **Valentin Potié**
-- **Basekou Diaby**
+- [**Paul Archer**](https://github.com/archer-paul)
+- [**Tom Effernelli**](https://github.com/tom-effernelli)
+- [**Orpheo Hellandsjo**](https://www.linkedin.com/in/orpheo-hellandsjo/)
+- [**Valentin Potié**](https://www.linkedin.com/in/valentinpotie/)
+- [**Basekou Diaby**](https://www.linkedin.com/in/basekou-diaby/)
 
 ## Fonctionnalités Principales
 
