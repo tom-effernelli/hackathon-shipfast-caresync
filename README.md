@@ -16,11 +16,11 @@ This project was developed as part of the **Shipfast w/ Anthropic, Cerebras, Lov
 
 ## Team Members
 
-- **Paul Archer**
-- **Tom Effernelli**
-- **Orpheo Hellandsjo**
-- **Valentin Potié**
-- **Basekou Diaby**
+- [**Paul Archer**](https://github.com/archer-paul)
+- [**Tom Effernelli**](https://github.com/tom-effernelli)
+- [**Orpheo Hellandsjo**](https://www.linkedin.com/in/orpheo-hellandsjo/)
+- [**Valentin Potié**](https://www.linkedin.com/in/valentinpotie/)
+- [**Basekou Diaby**](https://www.linkedin.com/in/basekou-diaby/)
 
 ## Key Features
 
