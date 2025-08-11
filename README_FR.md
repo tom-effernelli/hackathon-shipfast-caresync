@@ -6,6 +6,8 @@
 
 https://github.com/user-attachments/assets/3f42b9ac-d325-4b4f-b3b1-d22c6143fdd9
 
+Vous pouvez essayer l'app [ici](https://hackathon-shipfast-caresync.vercel.app/).
+
 ## Présentation
 
 CareSync est un système avancé de gestion des soins de santé conçu pour optimiser les flux de travail des services d'urgence grâce à l'intelligence artificielle et à la surveillance des patients en temps réel. Cette plateforme complète intègre l'enregistrement vocal des patients, l'analyse de triage alimentée par l'IA et la gestion intelligente des flux de travail pour améliorer l'efficacité de la prestation des soins de santé et les résultats pour les patients.
