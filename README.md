@@ -10,6 +10,8 @@ https://github.com/user-attachments/assets/3f42b9ac-d325-4b4f-b3b1-d22c6143fdd9
 
 CareSync is an advanced healthcare management system designed to optimize emergency department workflows through artificial intelligence and real-time patient monitoring. This comprehensive platform integrates voice-enabled patient check-in, AI-powered triage analysis, and intelligent workflow management to enhance healthcare delivery efficiency and patient outcomes.
 
+You can try the app [here](https://hackathon-shipfast-caresync.vercel.app/).
+
 ## Development Context
 
 This project was developed as part of the **Shipfast w/ Anthropic, Cerebras, Lovable and Windsurf** hackathon, demonstrating the integration of cutting-edge AI technologies in healthcare applications.
